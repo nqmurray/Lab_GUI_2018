@@ -14,7 +14,7 @@ from datetime import datetime
 
 
 root = Tk()
-root.title('GUI TITLE')
+root.title('AHE Measurement')
 
 def main():
 
@@ -28,9 +28,8 @@ def main():
     # fields of user set entries, first entry is the label text for the labelframe
     # field inputs should be a list with a label string and a default value for the entry widget
     mag_fields = 'Magnetic Settings', ['Hz Field (Oe)', 100], ['Hz Step (Oe)', 20], ['Hx Field (Oe)', 0], ['Hx Step (Oe)', 0], ['Hz (Oe)/DAC (V)', 123], ['Hx (Oe)/DAC (V)', 123], ['Output Time (s)', 1],   
-    keith_fields = 'Keithley Settings', ['Current (mA)',   1.9], ['Current Step (mA)', 0], ['k3', 'variables']
-    lockin_fields = 'Lock In Amp Settings', ['freq', 'a value'], ['osc', '223'], ['harm', 253]
-    rows = len(mag_fields) + len(keith_fields) + len(lockin_fields) + 5 # extra rows from makeextras()
+    keith_fields = 'Keithley Settings', ['Current (mA)',   1.9], ['Current Step (mA)', 0], ['Delay (s)', 1]
+    rows = len(mag_fields) + len(keith_fields) + 5 # extra rows from makeextras()
 
     # frames for various widgets
     content = Frame(root)
@@ -50,10 +49,9 @@ def main():
     make_plot(plt_frame, plot_title, x_axis_label, y_axis_label)
     magnet = make_form(settings_frame, mag_fields)
     keith = make_form(settings_frame, keith_fields)  
-    lock_in = make_form(settings_frame, lockin_fields) 
     display = make_info(information_frame) # Listbox for displaying information
     H_dir_loop, field_loop, current_loop, DACz, DACx = make_extras(settings_frame, magnet, keith) # loop direction, field input type, current input type, DAC channels
-    make_buttons(buttons_frame, magnet, keith, lock_in, plot_title, x_axis_label, y_axis_label)
+    make_buttons(buttons_frame, magnet, keith, plot_title, x_axis_label, y_axis_label)
 
     #weights columns for all multiple weight=1 columns
     weight(buttons_frame)
@@ -199,13 +197,13 @@ def make_extras(root, magnet_list, keith_list):
 
 
 #creates and grids the buttons
-def make_buttons(root, magnet, keith, lock_in, plot_title, x_label, y_label):
+def make_buttons(root, magnet, keith, plot_title, x_label, y_label):
 
     # radio button command
     xz = StringVar()
 
     # button list
-    measure_button = Button(root, text='Measure', command= lambda: measure_method(magnet, keith, lock_in, plot_title, x_label, y_label))
+    measure_button = Button(root, text='Measure', command= lambda: measure_method(magnet, keith, plot_title, x_label, y_label))
     dir_button = Button(root, text='Change Directory', command=change_directory)
     quit_button = Button(root, text='Quit', command=quit_method)
     clear_button = Button(root, text='Clear', command= lambda: clear_method(plot_title, x_label, y_label))
@@ -237,7 +235,6 @@ def plot_set(title, x_label, y_label):
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
      
-
 
 # fetches the entry value for a given label, returns error if no matching value found    
 def fetch_entry(var, entry_list):
@@ -375,17 +372,6 @@ def output_method(Hdirection, magnet):
     freq=int(_frequency)
     
     amp = lock inAmp(func, sense, signal, freq)
-    
-    if _output.replace('.','').replace('-','').isdigit() :
-        #print(entry_output.get())
-        amp.dacOutput((double(_output)/i), DAC)
-
-        display.insert('end', "Single output field: "+_output+" Oe.")
-        display.see(END)
-    else:
-        display.insert('end', "\""+_output+"\" is not a valid ouput value.")
-        display.see(END)
-
     """
     display.insert('end', 'Output in the %s director for %s second(s)' % (Hdirection, time))
     display.see(END)
@@ -406,7 +392,7 @@ def dac_method(magnet, string):
         global DACz, DACx
 
         # takes entry value and prints to display, closes window
-        def ok_but():
+        def ok_button():
 
             new = ent.get()
             # updates conversion factor to user input
@@ -422,7 +408,7 @@ def dac_method(magnet, string):
 
         lbl = Label(top, text="New Conversion Factor (Oe/V): ", anchor='w')
         ent = Entry(top, width=30)
-        ok = Button(top, text='Ok', command=ok_but)
+        ok = Button(top, text='Ok', command=ok_button)
 
         lbl.grid(row=0, column=0, sticky='nsew')
         ent.grid(row=0, column=1, sticky='nsew')
@@ -437,7 +423,6 @@ def dac_method(magnet, string):
 
         display.insert('end', 'H%s DAC channel set to %s' % (string, out))
         display.see(END)
-
 
     return update
 
@@ -487,14 +472,12 @@ def make_list(max_val, step_val):
         while maximum <= float(max_val):
             new_list.append(maximum)
             maximum += step
-        print(new_list)
         return new_list
     # if maximum is a negative value, build the list
     else:
         while maximum <= -float(max_val):
             new_list.append(maximum)
             maximum += step
-        print(new_list)
         return new_list
 
 
@@ -517,20 +500,15 @@ def convert_to_list(input_list):
 def save_method(fix_val, current_val, x_values, y_values):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+"AHE_DC_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
-    file.write("Applied in-plane field: "+str(fix_val)+"(Oe)\n")
+    file = open(str(directory)+"/"+"AHE_"+H_dir_loop+"_scan_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
+    file.write(H_dir_loop+" field: "+str(fix_val)+"(Oe)\n")
     file.write("Applied current: "+str(current_val)+"(mA)\n")
     file.write("\n\n")
-    file.write("Number"+" "+"Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
+    file.write("Number"+" "+H_dir_loop+" Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
 
-    # can write with enumerate - update!
-    cnt=1
-    #output all data 
-    for a in range(len(y_values)):
-
-        file.write(str(cnt)+" "+str(x_values[a])+" "+str(y_values[a])+"\n")
-        cnt +=1
-
+    for counter, value in enumerate(y_values):
+        file.write(str(counter)+" "+str(x_values[counter])+" "+str(value)+"\n")
+        
     file.closed
 
     display.insert('end', stamp)
@@ -540,11 +518,7 @@ def save_method(fix_val, current_val, x_values, y_values):
 
 
 # measurement function
-def measure_method(magnet, keith, lock_in, plot_title, x_axis_label, y_axis_label):
-    """ get all values, make loop conditions, run loop"""
-
-    #list of measurements (for plotting and saving)
-    measured_values = []
+def measure_method(magnet, keith, plot_title, x_axis_label, y_axis_label):
 
     # set the scan and fixed applied field directions
     if H_dir_loop == 'Hz':
@@ -581,6 +555,9 @@ def measure_method(magnet, keith, lock_in, plot_title, x_axis_label, y_axis_labe
 
         for current_val in current_output:
 
+            # intializes the measurement data list
+            measured_values = []
+
             # reset the plot to be clear for graphing
             plot_set(plot_title, x_axis_label, y_axis_label)
 
@@ -604,8 +581,7 @@ def measure_method(magnet, keith, lock_in, plot_title, x_axis_label, y_axis_labe
             save_method(fix_val, current_val, scan_field_output, measured_values)
 
 
-            # clear the measurement data for new list
-            measured_values = []
+
 
 
 
