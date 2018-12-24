@@ -14,6 +14,8 @@ from datetime import datetime
 from LockinAmp import lockinAmp
 from keithley2400_I import Keithley2400
 from keithley import Keithley
+import multiprocessing
+import threading
 
 
 root = Tk()
@@ -307,7 +309,7 @@ def Iapp_input(input_type, keith):
         for x in keith:
             if 'Current (mA)' in x[0]:
                 x[1].delete(0, len(x[1].get())) # clear entry
-                x[1].insert(0, '-1, 0, 1')
+                x[1].insert(0, '-1, 0.1, 1')
                 x[1].update()
             elif 'Step' in x[0]:
                 x[1].config(state=DISABLED)
@@ -335,7 +337,7 @@ def Iapp_input(input_type, keith):
 # sets default save directory, returns directory path
 def set_directory():
 
-    test = os.path.expanduser('~/Desktop')
+    test = os.path.expanduser('~/Documents')
 
     if os.path.isdir(test + '/Measurements'):
         os.chdir(test + '/Measurements')
@@ -600,17 +602,15 @@ def measure_method(magnet, keith, plot_title, x_axis_label, y_axis_label):
     else: 
         current_output = convert_to_list(fetch_entry('Current (mA)', keith))
 
-    keith_2400=Keithley2400(f) #Initiate K2400
-    keith_2000=Keithley(f) #Initiate K2000
+    keith_2400=Keithley2400('f') #Initiate K2400
+    keith_2000=Keithley('f') #Initiate K2000
     amp = lockinAmp(func, sense, signal, freq) #Initiate Lock-in
 
-    #check to make sure all output values are in bounds.
-    if max(fix_field_output) / fix_interval < fix_limit and max(scan_field_output) / scan_interval < scan_limit:
-
+    def event():
         # if in bounds run scan
         for fix_val in fix_field_output:
 
-            amp.dacOutput(fix_val, fix_dac)
+            amp.dacOutput(fix_val / fix_interval, fix_dac)
 
             for current_val in current_output:
 
@@ -646,13 +646,16 @@ def measure_method(magnet, keith, plot_title, x_axis_label, y_axis_label):
                 # loop over all scan values
                 for scan_val in scan_field_output:
 
-                    amp.output(scan_val, scan_dac)
+                    amp.dacOutput(scan_val / scan_interval, scan_dac)
+                    # allows amp output to power fully up at high values
+                    if len(measured_values) < 5:
+                        time.sleep(0.5)
                     data = keith_2000.measureMulti(avg)
                     tmp = float(1000*data/current_val) # Voltage from K2000 / Current from K2400
                     measured_values.append(tmp)
                     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5, alpha=0.5)
                     dataplot.draw()
-                    display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val), round(tmp, 4))
+                    display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, round(tmp, 4)))
                     display.see(END)
                 
                 # save data
@@ -661,15 +664,19 @@ def measure_method(magnet, keith, plot_title, x_axis_label, y_axis_label):
                 time.sleep(delay)
 
         # turn everything off at end of loop
-        amp.dacOutput(0, DACx)
-        amp.dacOutput(0, DAC)
+        amp.dacOutput(0, fix_dac)
+        amp.dacOutput(0, scan_dac)
 
-        keith.fourWireOff()
-        keith.outputOn()
+        keith_2400.fourWireOff()
+        keith_2400.outputOn()
 
-        listbox_l.insert('end',"Measurement finished")
-        listbox_l.see(END)
+        display.insert('end',"Measurement finished")
+        display.see(END)
 
+    #check to make sure all output values are in bounds.
+    if max(fix_field_output) / fix_interval < fix_limit and max(scan_field_output) / scan_interval < scan_limit:
+        th = threading.Thread(target=event)
+        th.start()
     else:
         messagebox.showwarning('Output Too Large', 'Output value beyond amp voltage threshold')
         display.insert('end', 'Output value too large!')
