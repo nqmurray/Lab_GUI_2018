@@ -458,28 +458,30 @@ def quit_method():
 
 # takes maximum value and step size and creates a list of all values (floats) to run from low to high
 def make_list(max_val, step_val):
-    print(max_val, step_val)
-
-    maximum = float(max_val)
-    step = float(step_val)
-    new_list = []
-    # if step is zero, field is only measured at that value
-    if step == 0.0:
-        return [maximum]
-    # if maximum is a positive value, build list from neg to positive
-    elif maximum > 0.0:
-        maximum = -maximum
-        while maximum <= float(max_val):
-            new_list.append(maximum)
-            maximum += step
-        return new_list
-    # if maximum is a negative value, build the list
+    # checks to make sure inputs are valid (numbers)
+    if max_val.lstrip('-').replace('.','',1).isdigit() and step_val.lstrip('-').replace('.','',1).isdigit():
+        maximum = float(max_val)
+        step = float(step_val)
+        new_list = []
+        # if step is zero, field is only measured at that value
+        if step == 0.0:
+            return [maximum]
+        # if maximum is a positive value, build list from neg to positive
+        elif maximum > 0.0:
+            maximum = -maximum
+            while maximum <= float(max_val):
+                new_list.append(maximum)
+                maximum += step
+            return new_list
+        # if maximum is a negative value, build the list
+        else:
+            while maximum <= -float(max_val):
+                new_list.append(maximum)
+                maximum += step
+            return new_list
     else:
-        while maximum <= -float(max_val):
-            new_list.append(maximum)
-            maximum += step
-        return new_list
-
+        messagebox.showwarning('Invalid Entry', 'Field or step input is not a digit')
+        
 
 # converts string to list, returns list (of floats), raises error if list is not all numeric
 def convert_to_list(input_list):
