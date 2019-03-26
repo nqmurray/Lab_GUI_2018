@@ -58,7 +58,7 @@ def main():
     weight(information_frame)
     weight(settings_frame)
 
-    # wights for all rows and columns with weight!=1
+    # weights for all rows and columns with weight!=1
     content.columnconfigure(0, weight=3)
     content.columnconfigure(1, weight=3)
     content.columnconfigure(2, weight=3)
