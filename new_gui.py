@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 import os
 import time
+from datetime import datetime
 
 root = Tk()
 root.title('GUI TITLE')
@@ -129,7 +130,7 @@ def make_form(root, dictionary, frametxt):
 # initializes and grids matplotlib plot 
 def make_plot(root, title, x_label, y_label):
 
-    global ax, dataplot
+    global fig, ax, dataplot
 
     # matplotlib figure and axes 
     fig = plt.Figure(figsize=(6,5), dpi=100)
@@ -159,7 +160,7 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
 
     # radiobutton to determine scanning field vs. set field
-    control_dict['H Scan Direction'] = StringVar(); control_dict['H Scan Direction'].set('Hx')
+    control_dict['H Scan Direction'] = StringVar(); control_dict['H Scan Direction'].set('Hz')
     Hz = Radiobutton(lf, text="Scan Hz", variable=control_dict['H Scan Direction'], value='Hz', width=12, anchor='w', \
         command = lambda: Hscan_select(control_dict['H Scan Direction'].get(), control_dict['Display']))
     Hx = Radiobutton(lf, text="Scan Hx", variable=control_dict['H Scan Direction'], value='Hx', width=12, anchor='w', \
@@ -354,23 +355,145 @@ def quit_method(display):
         root.quit()
 
 
-def animation(i, x_data, y_data):
+# animation to plot data
+def animate(i):
 
-    x_data = x_data[:-(len(x_data)-len(y_data))]
+    # limit plot x data to points with already measured values
+    x_plot_data = scan_field_output[:-(len(scan_field_output)-len(measured_values))]
 
     ax.clear()
-    ax.plot(x_data, y_data)
+    ax.plot(x_plot_data, measured_values)
 
 
-# measurement loop!
+# takes maximum value and step size and creates a list of all values (floats) to run from low to high
+def make_list(max_val, step_val):
+    # checks to make sure inputs are valid (numbers)
+    if max_val.lstrip('-').replace('.','',1).isdigit() and step_val.lstrip('-').replace('.','',1).isdigit():
+        maximum = float(max_val)
+        step = float(step_val)
+        new_list = []
+        # if step is zero, field is only measured at that value
+        if step == 0.0:
+            return [maximum]
+        # if maximum is a positive value, build list from neg to positive
+        elif maximum > 0.0:
+            maximum = -maximum
+            while maximum <= float(max_val):
+                new_list.append(maximum)
+                maximum += step
+            return new_list
+        # if maximum is a negative value, build the list
+        else:
+            while maximum <= -float(max_val):
+                new_list.append(maximum)
+                maximum += step
+            return new_list
+    else:
+        messagebox.showwarning('Invalid Entry', 'Field or step input is not a digit')
+        
+
+# converts string to list, returns list (of floats), raises error if list is not all numeric
+def convert_to_list(input_list):
+    
+    str_list = input_list.replace(",", ' ') # input list can have , and/or spaces to seperate values
+    str_list = str_list.split()
+    new_list = []
+    for x in str_list:
+        verify = x.lstrip('-')
+        if verify.replace('.','',1).isdigit() == False:
+            messagebox.showerror('Error', 'Formatting error with value %s.' % str(x))
+        else:
+            new_list.append(float(x))
+    return(new_list)
+
+
+# takes file parameters and results and saves the file, should have 5 lines before data is saved
+def save_method(H_dir, fix_val, current_val, x_values, y_values, display, directory):
+
+    stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
+    file = open(str(directory)+"/"+"AHE_"+H_dir+"_scan_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
+    file.write(H_dir+" field: "+str(fix_val)+"(Oe)\n")
+    file.write("Applied current: "+str(current_val)+"(mA)\n")
+    file.write("\n\n")
+    file.write("Number"+" "+H_dir+" Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
+
+    for counter, value in enumerate(y_values):
+        file.write(str(counter)+" "+str(x_values[counter])+" "+str(value)+"\n")
+        
+    file.closed
+
+    display.insert('end', stamp)
+    display.insert('end', "The Measurement data is saved.")
+    display.see(END)
+
+
+# measurement loop, iterates over values of a list built from parameters in dictionaries
 def measure_method(mag_dict, keith_dict, control_dict, plot_title, x_label, y_label):
-    pass
 
-    ani = animation.FuncAnimation(fig, animate, fargs=(x_data, y_data), interval=1000)
+    global scan_field_output, measured_values
+    
+    display = control_dict['Display']
+
+    # set the scan and fixed applied field directions
+    if control_dict['H Scan Direction'].get() == 'Hz':
+        scan = 'Hz'
+        fix = 'Hx'
+    else:
+        scan = 'Hx'
+        fix = 'Hz'
+
+    # create the lists of field values, scan loop is modified to include full loop
+    if control_dict['Field Step'].get() == 'Step':
+        scan_field_output = make_list(mag_dict['%s Field (Oe)' % scan].get(), mag_dict['%s Step (Oe)' % scan].get())
+        inverse = reversed(scan_field_output[0:-1])
+        for x in inverse:
+            scan_field_output.append(x)
+        print(scan_field_output)
+        fix_field_output = make_list(mag_dict['%s Field (Oe)' % fix].get(), mag_dict['%s Step (Oe)' % fix].get())
+    else:
+        scan_field_output = convert_to_list(mag_dict['%s Field (Oe)' % scan].get())
+        inverse = reversed(scan_field_output[0:-1])
+        for x in inverse:
+            scan_field_output.append(x)
+
+        fix_field_output = convert_to_list(mag_dict['%s Field (Oe)' % fix].get())
+
+    # create the list of current values
+    if control_dict['I_app Step'].get() == 'Step': 
+        current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
+    else: 
+        current_output = convert_to_list(keith_dict['Current (mA)'].get())
+
+    measured_values = [] # initialize measured values list
+    # animation! (displays data)
+    ani = animation.FuncAnimation(fig, animate, interval=50)
     plt.show()
 
+    # measurement loops - for fixed field value, measure at fixed current values, scan field and save
+    for fix_val in fix_field_output:
 
+        for current_val in current_output:
 
+            # intializes the measurement data list
+            measured_values = []
+
+            display.insert('end', 'Measurement at %s (mA)' % str(current_val))
+            display.insert('end', 'Measurement at %s (Oe)' % str(fix_val))
+            display.see(END)
+
+            # loop over all scan values
+            x = 0
+            for scan_val in scan_field_output:
+                tmp = scan_val * 2 + x
+                x += 1
+                measured_values.append(tmp)
+                display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, tmp))
+                display.see(END)
+                time.sleep(1)
+
+            # save data
+            save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
+                scan_field_output, measured_values, display, control_dict['Directory'])
 
 
 
