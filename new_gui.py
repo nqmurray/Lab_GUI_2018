@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 import os
@@ -16,6 +16,13 @@ from datetime import datetime
 
 root = Tk()
 root.title('GUI TITLE')
+
+global scan_field_output, measured_values, dataplot
+
+fig = plt.Figure(figsize=(6,5), dpi=100)
+ax = fig.add_subplot(111)
+scan_field_output = []
+measured_values = []
 
 def main():
 
@@ -99,6 +106,8 @@ def main():
     # sets current directory to default (~/Documents/Measurements)
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
+    ani = animation.FuncAnimation(fig, animate, interval=500)
+
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
 #----------------------------------------END OF MAIN-------------------------------------------#
@@ -130,14 +139,13 @@ def make_form(root, dictionary, frametxt):
 # initializes and grids matplotlib plot 
 def make_plot(root, title, x_label, y_label):
 
-    global fig, ax, dataplot
+    global dataplot
 
     # matplotlib figure and axes 
-    fig = plt.Figure(figsize=(6,5), dpi=100)
-    ax = fig.add_subplot(111)
-    plot_set(title, x_label, y_label)
+    #plot_set(title, x_label, y_label)
     # canvas for matplotlib gui
     dataplot = FigureCanvasTkAgg(fig, root)
+    dataplot.show()
     dataplot.get_tk_widget().grid(row=0, column=0, pady=0, padx=0, sticky='nsew')
 
 
@@ -330,7 +338,7 @@ def output_method(var, mag_dict, display):
 def clear_method(title, x_label, y_label, display):
 
     plot_set(title, x_label, y_label)
-    dataplot.draw()
+    dataplot.show()
     display.delete(0, END)
     print("clear all")
 
@@ -359,7 +367,8 @@ def quit_method(display):
 def animate(i):
 
     # limit plot x data to points with already measured values
-    x_plot_data = scan_field_output[:-(len(scan_field_output)-len(measured_values))]
+    x_plot_data = scan_field_output
+    print('test')
 
     ax.clear()
     ax.plot(x_plot_data, measured_values)
@@ -464,10 +473,6 @@ def measure_method(mag_dict, keith_dict, control_dict, plot_title, x_label, y_la
     else: 
         current_output = convert_to_list(keith_dict['Current (mA)'].get())
 
-    measured_values = [] # initialize measured values list
-    # animation! (displays data)
-    ani = animation.FuncAnimation(fig, animate, interval=50)
-    plt.show()
 
     # measurement loops - for fixed field value, measure at fixed current values, scan field and save
     for fix_val in fix_field_output:
