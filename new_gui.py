@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 import os
 import time
+import threading
 from datetime import datetime
 
 root = Tk()
@@ -106,7 +107,7 @@ def main():
     # sets current directory to default (~/Documents/Measurements)
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
-    ani = animation.FuncAnimation(fig, animate, interval=500)
+    ani = animation.FuncAnimation(fig, animate, interval=50)
 
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
@@ -141,11 +142,9 @@ def make_plot(root, title, x_label, y_label):
 
     global dataplot
 
-    # matplotlib figure and axes 
-    #plot_set(title, x_label, y_label)
     # canvas for matplotlib gui
     dataplot = FigureCanvasTkAgg(fig, root)
-    dataplot.show()
+    dataplot.draw()
     dataplot.get_tk_widget().grid(row=0, column=0, pady=0, padx=0, sticky='nsew')
 
 
@@ -212,7 +211,7 @@ def make_buttons(root, mag_dict, keith_dict, control_dict, plot_title, x_lbl, y_
 
     # button list
     measure_button = Button(root, text='Measure', \
-        command=lambda:measure_method(mag_dict, keith_dict, control_dict, plot_title, x_lbl, y_lbl))
+        command=lambda:measure_method(mag_dict, keith_dict, control_dict))
     dir_button = Button(root, text='Change Directory', \
         command=lambda:change_directory(control_dict['Directory'], control_dict['Display']))
     quit_button = Button(root, text='Quit', \
@@ -365,13 +364,11 @@ def quit_method(display):
 
 # animation to plot data
 def animate(i):
-
-    # limit plot x data to points with already measured values
-    x_plot_data = scan_field_output
-    print('test')
+    global scan_field_output, measured_values
 
     ax.clear()
-    ax.plot(x_plot_data, measured_values)
+    ax.grid(True)
+    ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
 # takes maximum value and step size and creates a list of all values (floats) to run from low to high
@@ -437,68 +434,78 @@ def save_method(H_dir, fix_val, current_val, x_values, y_values, display, direct
 
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
-def measure_method(mag_dict, keith_dict, control_dict, plot_title, x_label, y_label):
-
-    global scan_field_output, measured_values
+def measure_method(mag_dict, keith_dict, control_dict):
     
     display = control_dict['Display']
 
-    # set the scan and fixed applied field directions
-    if control_dict['H Scan Direction'].get() == 'Hz':
-        scan = 'Hz'
-        fix = 'Hx'
-    else:
-        scan = 'Hx'
-        fix = 'Hz'
+    # target of threading, allows for smooth running
+    def measure_loop():
+        global scan_field_output, measured_values
 
-    # create the lists of field values, scan loop is modified to include full loop
-    if control_dict['Field Step'].get() == 'Step':
-        scan_field_output = make_list(mag_dict['%s Field (Oe)' % scan].get(), mag_dict['%s Step (Oe)' % scan].get())
-        inverse = reversed(scan_field_output[0:-1])
-        for x in inverse:
-            scan_field_output.append(x)
-        print(scan_field_output)
-        fix_field_output = make_list(mag_dict['%s Field (Oe)' % fix].get(), mag_dict['%s Step (Oe)' % fix].get())
-    else:
-        scan_field_output = convert_to_list(mag_dict['%s Field (Oe)' % scan].get())
-        inverse = reversed(scan_field_output[0:-1])
-        for x in inverse:
-            scan_field_output.append(x)
+        # set the scan and fixed applied field directions
+        if control_dict['H Scan Direction'].get() == 'Hz':
+            scan = 'Hz'
+            fix = 'Hx'
+        else:
+            scan = 'Hx'
+            fix = 'Hz'
 
-        fix_field_output = convert_to_list(mag_dict['%s Field (Oe)' % fix].get())
+        # create the lists of field values, scan loop is modified to include full loop
+        if control_dict['Field Step'].get() == 'Step':
+            scan_field_output = make_list(mag_dict['%s Field (Oe)' % scan].get(), mag_dict['%s Step (Oe)' % scan].get())
+            inverse = reversed(scan_field_output[0:-1])
+            for x in inverse:
+                scan_field_output.append(x)
+            print(scan_field_output)
+            fix_field_output = make_list(mag_dict['%s Field (Oe)' % fix].get(), mag_dict['%s Step (Oe)' % fix].get())
+        else:
+            scan_field_output = convert_to_list(mag_dict['%s Field (Oe)' % scan].get())
+            inverse = reversed(scan_field_output[0:-1])
+            for x in inverse:
+                scan_field_output.append(x)
 
-    # create the list of current values
-    if control_dict['I_app Step'].get() == 'Step': 
-        current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
-    else: 
-        current_output = convert_to_list(keith_dict['Current (mA)'].get())
+            fix_field_output = convert_to_list(mag_dict['%s Field (Oe)' % fix].get())
 
+        # create the list of current values
+        if control_dict['I_app Step'].get() == 'Step': 
+            current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
+        else: 
+            current_output = convert_to_list(keith_dict['Current (mA)'].get())
 
-    # measurement loops - for fixed field value, measure at fixed current values, scan field and save
-    for fix_val in fix_field_output:
+        # measurement loops - for fixed field value, measure at fixed current values, scan field and save
+        for fix_val in fix_field_output:
 
-        for current_val in current_output:
+            for current_val in current_output:
 
-            # intializes the measurement data list
-            measured_values = []
+                # intializes the measurement data list
+                measured_values = []
 
-            display.insert('end', 'Measurement at %s (mA)' % str(current_val))
-            display.insert('end', 'Measurement at %s (Oe)' % str(fix_val))
-            display.see(END)
-
-            # loop over all scan values
-            x = 0
-            for scan_val in scan_field_output:
-                tmp = scan_val * 2 + x
-                x += 1
-                measured_values.append(tmp)
-                display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, tmp))
+                display.insert('end', 'Measurement at %s (mA)' % str(current_val))
+                display.insert('end', 'Measurement at %s (Oe)' % str(fix_val))
                 display.see(END)
-                time.sleep(1)
 
-            # save data
-            save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
-                scan_field_output, measured_values, display, control_dict['Directory'])
+                # loop over all scan values
+                x = 0
+                for scan_val in scan_field_output:
+                    tmp = scan_val * 2 + x
+                    x += 1
+                    measured_values.append(tmp)
+                    display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, tmp))
+                    display.see(END)
+                    time.sleep(0.1)
+
+                # save data
+                save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
+                    scan_field_output, measured_values, display, control_dict['Directory'])
+
+    # Only one thread allowed. This is a cheap and easy workaround so we don't have to stop threads
+    if threading.active_count() == 1:
+        # thread is set to Daemon so if mainthread is quit, it dies
+        t = threading.Thread(target=measure_loop, name='measure_thread', daemon=True)
+        t.start()
+    else:
+        messagebox.showerror('Error', 'Multiple threads detected!')
+
 
 
 
