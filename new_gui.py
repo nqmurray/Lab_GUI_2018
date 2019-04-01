@@ -107,11 +107,20 @@ def main():
     # sets current directory to default (~/Documents/Measurements)
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
-    ani = animation.FuncAnimation(fig, animate, interval=50)
+    ani = animation.FuncAnimation(fig, animate, interval=200)
 
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
 #----------------------------------------END OF MAIN-------------------------------------------#
+
+
+# animation to plot data
+def animate(i):
+    global scan_field_output, measured_values
+
+    ax.clear()
+    ax.grid(True)
+    ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
 # takes a given frame and gives all columns a weight of 1
@@ -362,15 +371,6 @@ def quit_method(display):
         root.quit()
 
 
-# animation to plot data
-def animate(i):
-    global scan_field_output, measured_values
-
-    ax.clear()
-    ax.grid(True)
-    ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
-
-
 # takes maximum value and step size and creates a list of all values (floats) to run from low to high
 def make_list(max_val, step_val):
     # checks to make sure inputs are valid (numbers)
@@ -497,6 +497,7 @@ def measure_method(mag_dict, keith_dict, control_dict):
                 # save data
                 save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
                     scan_field_output, measured_values, display, control_dict['Directory'])
+        #----------------------------END measure_loop----------------------------------#
 
     # Only one thread allowed. This is a cheap and easy workaround so we don't have to stop threads
     if threading.active_count() == 1:
@@ -505,6 +506,8 @@ def measure_method(mag_dict, keith_dict, control_dict):
         t.start()
     else:
         messagebox.showerror('Error', 'Multiple threads detected!')
+
+
 
 
 
