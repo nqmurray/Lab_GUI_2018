@@ -16,7 +16,7 @@ import threading
 from datetime import datetime
 
 root = Tk()
-root.title('GUI TITLE')
+root.title('SOT Current Switching Measurement')
 
 global scan_field_output, measured_values, dataplot
 
@@ -28,9 +28,9 @@ measured_values = []
 def main():
 
     # plot labels
-    plot_title = "TITLE"
-    x_lbl = "X LABEL"
-    y_lbl = "Y LABEL"
+    plot_title = "Realtime Resistance vs I Plot"
+    x_lbl = "Applied Current (mA)"
+    y_lbl = "Realtime Resistance (Ohm)"
 
     # dictionaries of GUI contents
     # default initial values
@@ -44,7 +44,7 @@ def main():
     keith_dict = {'Current (mA)': 1.9,
                 'Current Step (mA)': 0,
                 'Averages (s)': 1,
-                'Delay (s)': 1
+                'Delay (s)': 0.5
                 }
 
     # values set by various functions, define measurement settings
@@ -54,8 +54,8 @@ def main():
                     'H Output Direction': 'Hz', # set with make_buttons()
                     'Hz DAC Channel': 2, # displayed in make_extras()
                     'Hx DAC Channel': 3, # displayed in make_extras()
-                    'Hz/DAC (Oe/V)': 123, # displayed in make_extras()
-                    'Hx/DAC (Oe/V)': 123, # displayed in make_extras()
+                    'Hz/DAC (Oe/V)': 1022, # displayed in make_extras()
+                    'Hx/DAC (Oe/V)': 396.59, # displayed in make_extras()
                     'Hz DAC Limit': 1, # Voltage limit of Z direction mag
                     'Hx DAC Limit': 12, # Voltage limit of X direction mag
                     'Display': '', # set with make_info()
@@ -426,14 +426,13 @@ def convert_to_list(input_list):
 
 
 # takes file parameters and results and saves the file, should have 5 lines before data is saved
-def save_method(H_dir, fix_val, current_val, x_values, y_values, display, directory):
+def save_method(H_dir, fix_val, x_values, y_values, display, directory):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+"AHE_"+H_dir+"_scan_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
+    file = open(str(directory)+"/"+"SOT_Switching"+str(fix_val)+"Oe_"+str(stamp), "w")
     file.write(H_dir+" field: "+str(fix_val)+"(Oe)\n")
-    file.write("Applied current: "+str(current_val)+"(mA)\n")
-    file.write("\n\n")
-    file.write("Number"+" "+H_dir+" Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
+    file.write("\n\n\n")
+    file.write("Number"+" "+"Applied Current (mA)"+" "+"Resistance(Ohm)"+"\n")
 
     for counter, value in enumerate(y_values):
         file.write(str(counter)+" "+str(x_values[counter])+" "+str(value)+"\n")
@@ -462,7 +461,6 @@ def charging(val):
     else:
         return 0
 
-
 # measurement loop, iterates over values of a list built from parameters in dictionaries
 def measure_method(mag_dict, keith_dict, control_dict):
     
@@ -473,45 +471,39 @@ def measure_method(mag_dict, keith_dict, control_dict):
         global scan_field_output, measured_values
 
         # set the scan and fixed applied field directions
-        if control_dict['H Output Direction'].get() == 'Hz':
-            scan = 'Hz'
-            fix = 'Hx'
-        else:
-            scan = 'Hx'
-            fix = 'Hz'
+        fix = control_dict['H Output Direction'].get()
 
         # create the lists of field values, scan loop is modified to include full loop
         if control_dict['Field Step'].get() == 'Step':
-            # builds list from step and max value
-            scan_field_output = make_list(mag_dict['%s Field (Oe)' % scan].get(), mag_dict['%s Step (Oe)' % scan].get())
-            # take inverse list and add it on, creating the full list values to measure at
-            inverse = reversed(scan_field_output[0:-1])
-            for x in inverse:
-                scan_field_output.append(x)
             fix_field_output = make_list(mag_dict['%s Field (Oe)' % fix].get(), mag_dict['%s Step (Oe)' % fix].get())
         else:
-            # takes string and converts to list
-            scan_field_output = convert_to_list(mag_dict['%s Field (Oe)' % scan].get())
-            # take inverse list and add it on, creating the full list values to measure at
-            inverse = reversed(scan_field_output[0:-1])
-            for x in inverse:
-                scan_field_output.append(x)
             fix_field_output = convert_to_list(mag_dict['%s Field (Oe)' % fix].get())
 
         # create the list of current values
         if control_dict['I_app Step'].get() == 'Step': 
             current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
-        else: 
+            inverse = reversed(current[0:-1])
+            for x in inverse:
+                current_output.append(x)
+        else:
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
+            inverse = reversed(current[0:-1])
+            for x in inverse:
+                current_output.append(x) 
 
         # ensures output voltages will not exceed amp thresholds
-        if max(fix_field_output) / float(control_dict['%s/DAC (Oe/V)' % fix]) < float(control_dict['%s DAC Limit' % fix]) \
-        and max(scan_field_output) / float(control_dict['%s/DAC (Oe/V)' % scan]) < float(control_dict['%s DAC Limit' % scan]):
+        if max(fix_field_output) / float(control_dict['%s/DAC (Oe/V)' % fix]) < float(control_dict['%s DAC Limit' % fix]):
             
-            # measurement loops - for fixed field value, measure at fixed current values, scan field and save
+            # measurement loops - for fixed field value, scan current values and measure and save
             for fix_val in fix_field_output:
 
+                #lock in amp output here
+
                 for current_val in current_output:
+
+                    # setup K2400 here
+
+                    # take initial resistance measurement?
 
                     # intializes the measurement data list
                     measured_values = []
@@ -520,26 +512,15 @@ def measure_method(mag_dict, keith_dict, control_dict):
                     display.insert('end', 'Measurement at %s (Oe)' % str(fix_val))
                     display.see(END)
 
-                    # loop over all scan values
-                    x = 0
-                    for counter, scan_val in enumerate(scan_field_output):
-                        if counter == 0:
-                            diff = abs(scan_val)
-                        else:
-                            diff = abs(scan_val - scan_field_output[counter-1])
-                        # function to be built to model the time necessary for the magnets to get to value
-                        time.sleep(charging(diff))
+                    # lockin amp at scan val here
+                    tmp = scan_val * 2 #update to keithley measurement
+                    measured_values.append(tmp)
+                    display.insert('end', 'Applied %s Current Strength: %s (mA)      Measured Resistance: %s (Ohm)' %(scan, scan_val, tmp))
+                    display.see(END)
 
-                        tmp = scan_val * 2 + x
-                        x += 1
-                        measured_values.append(tmp)
-                        display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, tmp))
-                        display.see(END)
-                        time.sleep(0.1)
-
-                    # save data
-                    save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
-                        scan_field_output, measured_values, display, control_dict['Directory'])
+                # save data
+                save_method(control_dict['H Scan Direction'].get(), fix_val, \
+                    scan_field_output, measured_values, display, control_dict['Directory'])
 
         else:
             messagebox.showwarning('Output Too Large', 'Output value beyond amp voltage threshold')
