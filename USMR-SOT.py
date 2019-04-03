@@ -30,7 +30,7 @@ def main():
     # plot labels
     plot_title = "Averaged Absolute Resistance vs H Plot"
     x_lbl = "Applied Field (Oe)"
-    y_lbl = "Realtime Avg Resistance (Ohm)"
+    y_lbl = "Realtime Resistance (Ohm)"
 
     # dictionaries of GUI contents
     # default initial values
@@ -41,10 +41,13 @@ def main():
                 'Output Time (s)': 1
                 }
 
-    keith_dict = {'Sensing Current (mA)': 0.1,
+    keith_dict = {'Current (mA)': 1.9,
+                'Current Step (mA)': 0,
+                'Sensing Current (mA)': 0.1,
                 'Sensing Current Step (mA)': 0,
+                'Pulse Length (s)': 0.1,
                 'Averages (s)': 1,
-                'Delay (s)': 3.0
+                'Delay (s)': 0.5
                 }
 
     # values set by various functions, define measurement settings
@@ -195,6 +198,8 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     Hx_conv_lbl = Label(lf, width=15, text=('Hx DAC: %s' % control_dict['Hx/DAC (Oe/V)']), anchor='w')
     
     # grid created buttons 
+    Hz.grid(row=0, column=0, sticky='nsew')
+    Hx.grid(row=0, column=1, sticky='nsew')
     fstep.grid(row=1, column=0, sticky='nsew')
     fuser.grid(row=1, column=1, sticky='nsew')
     cstep.grid(row=2, column=0, sticky='nsew')
@@ -280,13 +285,19 @@ def field_input(var, mag_dict, display):
 def I_app_input(var, keith_dict, display):
 
     if var == 'User':
+        keith_dict['Current (mA)'].delete(0, len(keith_dict['Current (mA)'].get())) # clear entry
+        keith_dict['Current (mA)'].insert(0, '-1, 0, -1'); keith_dict['Current (mA)'].update() # list entry
+        keith_dict['Current Step (mA)'].config(state=DISABLED); keith_dict['Current Step (mA)'].update() # disable step function
         keith_dict['Sensing Current (mA)'].delete(0, len(keith_dict['Sensing Current (mA)'].get())) # clear entry
         keith_dict['Sensing Current (mA)'].insert(0, '-1, 0, -1'); keith_dict['Sensing Current (mA)'].update() # list entry
         keith_dict['Sensing Current Step (mA)'].config(state=DISABLED); keith_dict['Sensing Current Step (mA)'].update() # disable step function
     else:
+        keith_dict['Current (mA)'].delete(0, len(keith_dict['Current (mA)'].get())) # clear entry
+        keith_dict['Current (mA)'].insert(0, '0'); keith_dict['Current (mA)'].update() # step entry
+        keith_dict['Current Step (mA)'].config(state=NORMAL); keith_dict['Current Step (mA)'].update() # enable step function
         keith_dict['Sensing Current (mA)'].delete(0, len(keith_dict['Sensing Current (mA)'].get())) # clear entry
         keith_dict['Sensing Current (mA)'].insert(0, '0'); keith_dict['Sensing Current (mA)'].update() # step entry
-        keith_dict['Sensing Current Step (mA)'].config(state=NORMAL); keith_dict['Sensing Current Step (mA)'].update() # enable step function  
+        keith_dict['Sensing Current Step (mA)'].config(state=NORMAL); keith_dict['Sensing Current Step (mA)'].update() # enable step function   
 
     display.insert('end', '%s loop type selected for applied currents.' % var)
     display.see(END)
@@ -419,7 +430,7 @@ def convert_to_list(input_list):
 def save_method(sense_val, x_values, y_values, display, directory, name):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+str(name)+"_USMR_"+"Hx_scan_"+"Oe_"+str(sense_val)+"mA_"+str(stamp), "w")
+    file = open(str(directory)+"/"+name+"_USMR_SOT_"+"Hx_scan_"+"Oe_"+str(sense_val)+"mA_"+str(stamp), "w")
     file.write("Sensing current: "+str(sense_val)+"(mA)\n")
     file.write("\n\n\n")
     file.write("Number"+" "+"Hx Field(Oe)"+" "+"Avg Resistance(Ohm)"+"\n")
@@ -464,63 +475,65 @@ def measure_method(mag_dict, keith_dict, control_dict):
         if control_dict['Field Step'].get() == 'Step':
             # builds list from step and max value
             scan_field_output = make_list(mag_dict['Hx Field (Oe)'].get(), mag_dict['Hx Step (Oe)'].get())
-            # take inverse list and add it on, creating the full list values to measure at
-            inverse = reversed(scan_field_output[0:-1])
-            for x in inverse:
-                scan_field_output.append(x)
         else:
             # takes string and converts to list
             scan_field_output = convert_to_list(mag_dict['Hx Field (Oe)'].get())
-            # take inverse list and add it on, creating the full list values to measure at
-            inverse = reversed(scan_field_output[0:-1])
-            for x in inverse:
-                scan_field_output.append(x)
 
         # create the list of current values
-        if control_dict['I_app Step'].get() == 'Step':
-            # sensing current list 
+        if control_dict['I_app Step'].get() == 'Step': 
+            current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
+            # take inverse list and add it on, creating the full list values to measure at
+            inverse = reversed(current[0:-1])
+            for x in inverse:
+                current_output.append(x)
+            # sense list
             sense_output = make_list(keith_dict['Sensing Current (mA)'].get(), keith_dict['Sensing Current Step (mA)'].get())
         else: 
-            # sensing current list
+            current_output = convert_to_list(keith_dict['Current (mA)'].get())
+            # take inverse list and add it on, creating the full list values to measure at
+            inverse = reversed(current[0:-1])
+            for x in inverse:
+                current_output.append(x)
+            # sense list
             sense_output = convert_to_list(keith_dict['Sensing Current (mA)'].get())
-
 
         # ensures output voltages will not exceed amp thresholds
         if max(scan_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']):
             
-            # fixed sensing current value
-            for sense_val in sense_output:
+            # measurement loops -  measure pos and neg current at give scan value and take avg abs val (ohms)
+            for counter, scan_val in enumerate(scan_field_output):
 
-                # measurement loops -  measure pos and neg current at give scan value and take avg abs val (ohms)
-                for counter, scan_val in enumerate(scan_field_output):
+                #lock in amp output here
 
-                    #lock in amp output here
+                if counter == 0:
+                    diff = abs(scan_val)
+                else:
+                    diff = abs(scan_val - scan_field_output[counter-1])
+                # function to be built to model the time necessary for the magnets to get to value
+                time.sleep(charging(diff))
 
-                    # setup K2400 here
+                for sense_val in sense_output:
 
-                    # take initial resistance measurement?
+                    for current_val in current_output: 
 
-                    # intializes the measurement data list
-                    measured_values = []
+                        # setup K2400 here
 
-                    display.insert('end', 'Measurement at %s (mA)' % str(sense_val))
-                    display.see(END)
+                        # take initial resistance measurement?
 
-                    if counter == 0:
-                        diff = abs(scan_val)
-                    else:
-                        diff = abs(scan_val - scan_field_output[counter-1])
-                    # function to be built to model the time necessary for the magnets to get to value
-                    time.sleep(charging(diff))
+                        # intializes the measurement data list
+                        measured_values = []
 
-                    # lockin amp at scan val here
-                    tmp = scan_val * 2 #update to keithley measurement
-                    measured_values.append(tmp)
-                    display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Avg Resistance: %s (Ohm)' %(scan_val, tmp))
-                    display.see(END)
+                        display.insert('end', 'Measurement at %s (mA)' % str(sense_val))
+                        display.see(END)
 
-                # save data
-                save_method(sense_val, scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get())
+                        # lockin amp at scan val here
+                        tmp = scan_val * 2 #update to keithley measurement
+                        measured_values.append(tmp)
+                        display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Avg Resistance: %s (Ohm)' %(scan_val, tmp))
+                        display.see(END)
+
+                    # save data
+                    save_method(sense_val, scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get())
 
         else:
             messagebox.showwarning('Output Too Large', 'Output value beyond amp voltage threshold')

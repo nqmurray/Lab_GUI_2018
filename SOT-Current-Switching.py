@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 import os
 import time
-import threading
+import threading 
 from datetime import datetime
 
 root = Tk()
@@ -43,6 +43,8 @@ def main():
 
     keith_dict = {'Current (mA)': 1.9,
                 'Current Step (mA)': 0,
+                'Sensing Current (mA)': 0.1,
+                'Pulse Length (s)': 0.1,
                 'Averages (s)': 1,
                 'Delay (s)': 0.5
                 }
@@ -59,6 +61,7 @@ def main():
                     'Hz DAC Limit': 1, # Voltage limit of Z direction mag
                     'Hx DAC Limit': 12, # Voltage limit of X direction mag
                     'Display': '', # set with make_info()
+                    'File Name': 'Sample Name', # set with make_extras(), used in save function
                     'Directory': ''# set with set_directory(), updated with change_directory()
                     }
 
@@ -213,6 +216,12 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     Hz_conv_lbl.grid(row=3, column=1, sticky='nsew')
     Hx_lbl.grid(row=4, column=0, sticky='nsew')
     Hx_conv_lbl.grid(row=4, column=1, sticky='nsew')
+    # file name label and entry
+    file_lab = Label(lf, width=15, text='File Name', anchor='w')
+    file_ent = Entry(lf, width=15); file_ent.insert(0, control_dict['File Name'])
+    file_lab.grid(row=5, column=0, sticky='nsew')
+    file_ent.grid(row=5, column=1, sticky='nsew')
+    control_dict['File Name'] = file_ent
 
 
 # creates and grids buttons
@@ -426,10 +435,10 @@ def convert_to_list(input_list):
 
 
 # takes file parameters and results and saves the file, should have 5 lines before data is saved
-def save_method(H_dir, fix_val, x_values, y_values, display, directory):
+def save_method(H_dir, fix_val, x_values, y_values, display, directory, name):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+"SOT_Switching"+str(fix_val)+"Oe_"+str(stamp), "w")
+    file = open(str(directory)+"/"+name+"_SOT_Switching"+str(fix_val)+"Oe_"+str(stamp), "w")
     file.write(H_dir+" field: "+str(fix_val)+"(Oe)\n")
     file.write("\n\n\n")
     file.write("Number"+" "+"Applied Current (mA)"+" "+"Resistance(Ohm)"+"\n")
@@ -520,7 +529,7 @@ def measure_method(mag_dict, keith_dict, control_dict):
 
                 # save data
                 save_method(control_dict['H Scan Direction'].get(), fix_val, \
-                    scan_field_output, measured_values, display, control_dict['Directory'])
+                    scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get())
 
         else:
             messagebox.showwarning('Output Too Large', 'Output value beyond amp voltage threshold')

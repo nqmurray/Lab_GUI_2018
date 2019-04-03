@@ -16,14 +16,14 @@ import threading
 from datetime import datetime
 
 root = Tk()
-root.title('AHE & SMR Measurement')
+root.title('AHE & AMR Measurement')
 
 global scan_field_output, measured_values, dataplot
 
 fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 scan_field_output = []
-measured_values = []
+measured_values = [] 
 
 def main():
 
@@ -59,7 +59,9 @@ def main():
                     'Hz DAC Limit': 1, # Voltage limit of Z direction mag
                     'Hx DAC Limit': 12, # Voltage limit of X direction mag
                     'Display': '', # set with make_info()
-                    'Directory': ''# set with set_directory(), updated with change_directory()
+                    'Directory': '', # set with set_directory(), updated with change_directory()
+                    'File Name': 'Sample Name', # set with make_extras(), used in save function
+                    'Measurement Type': '' # set with make_extras(), used in save function
                     }
 
 
@@ -78,6 +80,7 @@ def main():
     information_frame.grid(column=0, row=rows, columnspan=3, sticky='nsew')
     buttons_frame.grid(column=3, row=rows, columnspan=2, sticky='nsew')
 
+    # builds the gui frames and associated buttons
     control_dict['Display'] = make_info(information_frame)
     mag_dict = make_form(settings_frame, mag_dict, 'Magnetic Settings')
     keith_dict = make_form(settings_frame, keith_dict, 'Current Settings')
@@ -180,9 +183,9 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     # radiobutton to determine scanning field vs. set field
     control_dict['H Scan Direction'] = StringVar(); control_dict['H Scan Direction'].set('Hz')
     Hz = Radiobutton(lf, text="Scan Hz", variable=control_dict['H Scan Direction'], value='Hz', width=12, anchor='w', \
-        command = lambda: Hscan_select(control_dict['H Scan Direction'].get(), control_dict['Display']))
+        command = lambda: Hscan_select(control_dict['H Scan Direction'].get(), control_dict['Display'], control_dict['Measurement Type']))
     Hx = Radiobutton(lf, text="Scan Hx", variable=control_dict['H Scan Direction'], value='Hx', width=12, anchor='w', \
-        command = lambda: Hscan_select(control_dict['H Scan Direction'].get(), control_dict['Display']))
+        command = lambda: Hscan_select(control_dict['H Scan Direction'].get(), control_dict['Display'], control_dict['Measurement Type']))
 
     # radiobutton to determine loop via step or user defined values
     control_dict['Field Step'] = StringVar(); control_dict['Field Step'].set('Step')
@@ -195,7 +198,12 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
         command = lambda: I_app_input(control_dict['I_app Step'].get(), keith_dict, control_dict['Display']))
     cuser = Radiobutton(lf, text="Iapp User Input", variable=control_dict['I_app Step'], value='User', width=12, anchor='w', \
         command = lambda: I_app_input(control_dict['I_app Step'].get(), keith_dict, control_dict['Display']))       
+    # option menu for measurement type
+    control_dict['Measurement Type'] = StringVar(); control_dict['Measurement Type'].set("AHE")
+    msr_type = ttk.OptionMenu(lf, control_dict['Measurement Type'], "AHE", "AHE", "AMR")
+    msr_type_lbl = Label(lf, width=15, text="Measurement Type: ", anchor='w')
 
+    #labels for lockin amp channel and conversion factors
     Hz_lbl = Label(lf, width=15, text=('Hz DAC: %s' % control_dict['Hz DAC Channel']), anchor='w')
     Hx_lbl = Label(lf, width=15, text=('Hx DAC: %s' % control_dict['Hx DAC Channel']), anchor='w')
     Hz_conv_lbl = Label(lf, width=15, text=('Hz DAC: %s' % control_dict['Hz/DAC (Oe/V)']), anchor='w')
@@ -213,6 +221,15 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     Hz_conv_lbl.grid(row=3, column=1, sticky='nsew')
     Hx_lbl.grid(row=4, column=0, sticky='nsew')
     Hx_conv_lbl.grid(row=4, column=1, sticky='nsew')
+    # grid measurement type stuff
+    msr_type_lbl.grid(row=5, column=0, sticky='nsew')
+    msr_type.grid(row=5, column=1, sticky='nsew')
+    # file name label and entry
+    file_lab = Label(lf, width=15, text='File Name', anchor='w')
+    file_ent = Entry(lf, width=15); file_ent.insert(0, control_dict['File Name'])
+    file_lab.grid(row=6, column=0, sticky='nsew')
+    file_ent.grid(row=6, column=1, sticky='nsew')
+    control_dict['File Name'] = file_ent
 
 
 # creates and grids buttons
@@ -257,10 +274,14 @@ def plot_set(title, x_label, y_label):
     ax.axis([-1, 1, -1, 1]) 
 
 
-# command to change H scan direction
-def Hscan_select(var, display):
+# command to change H scan direction, automatically updates measurement type
+def Hscan_select(var, display, m_type):
+    if var == 'Hx':
+        m_type.set("AMR")
+    else:
+        m_type.set("AHE")
 
-    display.insert('end', 'Scan in the %s direction.' % var)
+    display.insert('end', 'Scan in the %s direction. Measurement type set to %s' % (var, m_type.get()))
     display.see(END)
 
 
@@ -426,14 +447,10 @@ def convert_to_list(input_list):
 
 
 # takes file parameters and results and saves the file, should have 5 lines before data is saved
-def save_method(H_dir, fix_val, current_val, x_values, y_values, display, directory):
-    if H_dir == 'Hz':
-        m = "AHE_"
-    else:
-        m = "SMR_"
+def save_method(H_dir, fix_val, current_val, x_values, y_values, display, directory, m_type, name):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+m+H_dir+"_scan_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
+    file = open(str(directory)+"/"+name+"_"+m_type+"_"+H_dir+"_scan_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
     file.write(H_dir+" field: "+str(fix_val)+"(Oe)\n")
     file.write("Applied current: "+str(current_val)+"(mA)\n")
     file.write("\n\n")
@@ -546,7 +563,7 @@ def measure_method(mag_dict, keith_dict, control_dict):
 
                     # save data
                     save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
-                        scan_field_output, measured_values, display, control_dict['Directory'])
+                        scan_field_output, measured_values, display, control_dict['Directory'], control_dict['Measurement Type'].get(), control_dict['File Name'].get())
 
         else:
             messagebox.showwarning('Output Too Large', 'Output value beyond amp voltage threshold')
