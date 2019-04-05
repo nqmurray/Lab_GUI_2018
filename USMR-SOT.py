@@ -29,7 +29,7 @@ def main():
 
     # plot labels
     plot_title = "Averaged Absolute Resistance vs H Plot"
-    x_lbl = "Applied Field (Oe)"
+    x_lbl = "Applied Current (mA)"
     y_lbl = "Realtime Resistance (Ohm)"
 
     # dictionaries of GUI contents
@@ -523,13 +523,13 @@ def measure_method(mag_dict, keith_dict, control_dict):
                         # intializes the measurement data list
                         measured_values = []
 
-                        display.insert('end', 'Measurement at %s (mA)' % str(sense_val))
+                        display.insert('end', 'Measurement at %s (mA) and %s Hx (Oe)' % (str(sense_val), str(scan_val)))
                         display.see(END)
 
                         # lockin amp at scan val here
                         tmp = scan_val * 2 #update to keithley measurement
                         measured_values.append(tmp)
-                        display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Avg Resistance: %s (Ohm)' %(scan_val, tmp))
+                        display.insert('end', 'Applied Current Value: %s (mA)      Measured Avg Resistance: %s (Ohm)' %(current_val, tmp))
                         display.see(END)
 
                     # save data

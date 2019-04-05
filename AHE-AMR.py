@@ -281,7 +281,7 @@ def Hscan_select(var, display, m_type):
     else:
         m_type.set("AHE")
 
-    display.insert('end', 'Scan in the %s direction. Measurement type set to %s' % (var, m_type.get()))
+    display.insert('end', 'Scan in the %s direction. \n Measurement type set to %s' % (var, m_type.get()))
     display.see(END)
 
 
