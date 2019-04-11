@@ -15,18 +15,23 @@ import time
 import threading
 from datetime import datetime
 from LockinAmp import lockinAmp
-from keithley2400_I import Keithley2400
+from keithley2400 import Keithley2400
 from keithley import Keithley
 
 root = Tk()
 root.title('AHE & AMR Measurement')
 
-global scan_field_output, measured_values, dataplot
+# global values are measured in thread, plotted in animation
+global scan_field_output, measured_values, dataplot, curr_lbl, fix_lbl
 
+# stuff for animation function
 fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 scan_field_output = []
-measured_values = [] 
+measured_values = []
+# using lists because python has built in lock for list variables (avoids multithreading issues)
+curr_lbl = [''] # label of the current value being applied
+fix_lbl = [''] # label of the fixed field value being applied
 
 def main():
 
@@ -61,7 +66,7 @@ def main():
     # values set by various functions, define measurement settings
     control_dict = {'Field Step': 'Step', # set with make_extras()
                     'I_app Step': 'Step', # set with make_extras()
-                    'H Scan Direction': 'Hx', # set with make_extras()
+                    'H Scan Direction': 'Hz', # set with make_extras()
                     'H Output Direction': 'Hz', # set with make_buttons()
                     'Hz DAC Channel': 2, # displayed in make_extras()
                     'Hx DAC Channel': 3, # displayed in make_extras()
@@ -133,10 +138,14 @@ def main():
 
 # animation to plot data
 def animate(i):
-    global scan_field_output, measured_values
+    global scan_field_output, measured_values, curr_lbl, fix_lbl
 
     ax.clear()
     ax.grid(True)
+    ax.set_title(plot_title)
+    ax.set_xlabel(x_lbl)
+    ax.set_ylabel(y_lbl)
+    ax.legend(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -418,6 +427,8 @@ def quit_method(lockin_dict, display):
         amp.dacOutput(0, 3)
         amp.dacOutput(0, 4)
         keith_2400=Keithley2400('f') # Initiate K2400
+        keith_2400.minimize()
+        time.sleep(0.1)
         keith_2400.fourWireOff() 
         keith_2400.outputOff()
         display.insert('end', "All fields set to zero.")
@@ -516,10 +527,15 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
     # target of threading, allows for smooth running
     def measure_loop():
-        global scan_field_output, measured_values
+        global scan_field_output, measured_values, curr_lbl, fix_lbl
+
+        # resets measured values to allow animate to properly render graph when starting a new measurement loop
+        measured_values = []
+        curr_lbl[0] = ''
+        fix_lbl[0] = ''
 
         # set the scan and fixed applied field directions
-        if control_dict['H Output Direction'].get() == 'Hz':
+        if control_dict['H Scan Direction'].get() == 'Hz':
             scan = 'Hz'
             fix = 'Hx'
         else:
@@ -563,9 +579,12 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             for fix_val in fix_field_output:
                 # fixed output strength and channel
                 amp.dacOutput(fix_val / float(control_dict['%s DAC Limit' % fix]), control_dict['%s DAC Channel' % fix])
+                # sets legend value for current fixed field output
+                fix_lbl[0] = str(round(fix_val, 3))
 
                 for current_val in current_output:
-
+                    # sets legend value for current applied current output
+                    curr_lbl[0] = str(round(current_val, 3))
                     # setup K2400 here
                     keith_2400.fourWireOff()
                     keith_2400.setCurrent(current_val)
@@ -610,10 +629,12 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         scan_field_output, measured_values, display, control_dict['Directory'], control_dict['Measurement Type'].get(), control_dict['File Name'].get(), resistance)
                     # sleep between cycles
                     time.sleep(float(keith_dict['Delay (s)'].get()))
+
             # turn everything off at end of loop
             amp.dacOutput(0, control_dict['Hx DAC Channel'])
             amp.dacOutput(0, control_dict['Hz DAC Channel'])
-
+            keith_2400.minimize()
+            time.sleep(0.1)
             keith_2400.fourWireOff()
             keith_2400.outputOff()
 

@@ -15,7 +15,7 @@ import time
 import threading 
 from datetime import datetime
 from LockinAmp import lockinAmp
-from keithley2400_I import Keithley2400
+from keithley2400 import Keithley2400
 from keithley import Keithley
 
 root = Tk()
@@ -133,11 +133,14 @@ def main():
 
 # animation to plot data
 def animate(i):
-    global scan_field_output, measured_values
+    global current_output, measured_values
 
     ax.clear()
     ax.grid(True)
-    ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
+    ax.set_title(plot_title)
+    ax.set_xlabel(x_lbl)
+    ax.set_ylabel(y_lbl)
+    ax.plot(current_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
 # takes a given frame and gives all columns a weight of 1
@@ -412,6 +415,8 @@ def quit_method(display, lockin_dict):
         amp.dacOutput(0, 3)
         amp.dacOutput(0, 4)
         keith_2400=Keithley2400('f') # Initiate K2400
+        keith_2400.minimize()
+        time.sleep(0.1)
         keith_2400.fourWireOff() 
         keith_2400.outputOff()
         display.insert('end', "All fields set to zero.")
@@ -599,7 +604,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
             # turn everything off at end of loop
             amp.dacOutput(0, control_dict['%s DAC Channel'], % fix)
-
+            keith_2400.minimize()
+            time.sleep(0.1)
             keith_2400.fourWireOff()
             keith_2400.outputOff()
 
