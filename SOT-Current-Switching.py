@@ -21,12 +21,14 @@ from keithley import Keithley
 root = Tk()
 root.title('SOT Current Switching Measurement')
 
-global current_output, measured_values, dataplot
+global current_output, measured_values, dataplot, fix_lbl, pulse_lbl
 
 fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 current_output = []
 measured_values = []
+fix_lbl = ['']
+pulse_lbl = ['']
 
 def main():
 
@@ -37,8 +39,8 @@ def main():
 
     # dictionaries of GUI contents
     # default initial values
-    mag_dict = {'Hz Field (Oe)': 100,
-                'Hz Step (Oe)': 20,
+    mag_dict = {'Hz Field (Oe)': 0,
+                'Hz Step (Oe)': 0,
                 'Hx Field (Oe)': 0,
                 'Hx Step (Oe)': 0,
                 'Output Time (s)': 1
@@ -124,7 +126,7 @@ def main():
     # sets current directory to default (~/Documents/Measurements)
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
-    ani = animation.FuncAnimation(fig, animate, interval=200)
+    ani = animation.FuncAnimation(fig, animate, interval=200, fargs=[plot_title, x_lbl, y_lbl])
 
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
@@ -132,14 +134,15 @@ def main():
 
 
 # animation to plot data
-def animate(i):
-    global current_output, measured_values
+def animate(i, title, x, y):
+    global current_output, measured_values, fix_lbl, pulse_lbl
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(plot_title)
-    ax.set_xlabel(x_lbl)
-    ax.set_ylabel(y_lbl)
+    ax.set_title(title)
+    ax.set_xlabel(x)
+    ax.set_ylabel(y)
+    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(current_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -157,8 +160,8 @@ def make_form(root, dictionary, frametxt):
     lf = LabelFrame(root, text=frametxt)
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
     for counter, x in enumerate(dictionary.items()):
-        lab = Label(lf, width=15, text=x[0], anchor='w')
-        ent = Entry(lf, width=15); ent.insert(0, str(x[1]))
+        lab = Label(lf, width=20, text=x[0], anchor='w')
+        ent = Entry(lf, width=20); ent.insert(0, str(x[1]))
         lab.grid(row=counter, column=0, sticky='nsew')
         ent.grid(row=counter, column=1, sticky='nsew')
         dictionary[x[0]] = ent # set dictionary value to entry widget
@@ -214,10 +217,10 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     cuser = Radiobutton(lf, text="Iapp User Input", variable=control_dict['I_app Step'], value='User', width=12, anchor='w', \
         command = lambda: I_app_input(control_dict['I_app Step'].get(), keith_dict, control_dict['Display']))       
 
-    Hz_lbl = Label(lf, width=15, text=('Hz DAC: %s' % control_dict['Hz DAC Channel']), anchor='w')
-    Hx_lbl = Label(lf, width=15, text=('Hx DAC: %s' % control_dict['Hx DAC Channel']), anchor='w')
-    Hz_conv_lbl = Label(lf, width=15, text=('Hz DAC: %s' % control_dict['Hz/DAC (Oe/V)']), anchor='w')
-    Hx_conv_lbl = Label(lf, width=15, text=('Hx DAC: %s' % control_dict['Hx/DAC (Oe/V)']), anchor='w')
+    Hz_lbl = Label(lf, width=20, text=('Hz DAC: %s' % control_dict['Hz DAC Channel']), anchor='w')
+    Hx_lbl = Label(lf, width=20, text=('Hx DAC: %s' % control_dict['Hx DAC Channel']), anchor='w')
+    Hz_conv_lbl = Label(lf, width=20, text=('Hz DAC: %s' % control_dict['Hz/DAC (Oe/V)']), anchor='w')
+    Hx_conv_lbl = Label(lf, width=20, text=('Hx DAC: %s' % control_dict['Hx/DAC (Oe/V)']), anchor='w')
     
     # grid created buttons 
     Hz.grid(row=0, column=0, sticky='nsew')
@@ -232,8 +235,8 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     Hx_lbl.grid(row=4, column=0, sticky='nsew')
     Hx_conv_lbl.grid(row=4, column=1, sticky='nsew')
     # file name label and entry
-    file_lab = Label(lf, width=15, text='File Name', anchor='w')
-    file_ent = Entry(lf, width=15); file_ent.insert(0, control_dict['File Name'])
+    file_lab = Label(lf, width=20, text='File Name', anchor='w')
+    file_ent = Entry(lf, width=20); file_ent.insert(0, control_dict['File Name'])
     file_lab.grid(row=5, column=0, sticky='nsew')
     file_ent.grid(row=5, column=1, sticky='nsew')
     control_dict['File Name'] = file_ent
@@ -367,18 +370,19 @@ def output_direction(var, display):
 
 
 # applies a field H in the given direction at a given strength
+# applies a field H in the given direction at a given strength
 def output_method(control_dict, mag_dict, lockin_dict):
     display = control_dict['Display']
     amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage'], lockin_dict['Frequency'])
     d = control_dict['H Output Direction'].get() # direction output variable
     t = mag_dict['Output Time (s)'].get() # output time
-    output = mag_dict['%s Field (Oe)' % d].get() # direction of output
+    output = mag_dict['%s Field (Oe)' % d].get() # output value
     interval = control_dict['%s/DAC (Oe/V)' % d] # conversion integral
 
-    # confirms output and interval are numbers
-    if output.lstrip('-').replace('.','',1).isdigit() and interval.lstrip('-').replace('.','',1).isdigit():
+    # confirms output is number
+    if output.lstrip('-').replace('.','',1).isdigit():
         # if output below threshold value, then have lockin amp output for t seconds
-        if float(output) / float(interval) < float(control_dict['%s DAC Limit']):
+        if float(output) / float(interval) < float(control_dict['%s DAC Limit' % d]):
             amp.dacOutput((float(output) / float(interval)), control_dict['%s DAC Channel' % d])
             time.sleep(float(t))
             amp.dacOutput(0, control_dict['%s DAC Channel' % d])
@@ -515,10 +519,15 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
     # target of threading, allows for smooth running
     def measure_loop():
-        global current_output, measured_values
+        global current_output, measured_values, fix_lbl, pulse_lbl
+
+        measured_values = []
+        fix_lbl[0] = ''
+        pulse_lbl[0] = ''
+
 
         # set the scan and fixed applied field directions
-        fix = control_dict['H Output Direction'].get()
+        fix = control_dict['H Scan Direction'].get()
 
         # create the lists of field values, scan loop is modified to include full loop
         if control_dict['Field Step'].get() == 'Step':
@@ -529,19 +538,20 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         # create the list of current values
         if control_dict['I_app Step'].get() == 'Step': 
             current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
-            inverse = reversed(current[0:-1])
+            inverse = reversed(current_output[0:-1])
             for x in inverse:
                 current_output.append(x)
             pulse_width = make_list(keith_dict['Write Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
         else:
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
-            inverse = reversed(current[0:-1])
+            inverse = reversed(current_output[0:-1])
             for x in inverse:
                 current_output.append(x)
             pulse_width = convert_to_list(keith_dict['Write Pulse Width (s)']) 
 
         # ensures output voltages will not exceed amp thresholds
         if max(fix_field_output) / float(control_dict['%s/DAC (Oe/V)' % fix]) < float(control_dict['%s DAC Limit' % fix]):
+            
             
             # initialize machines
             amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage'], lockin_dict['Frequency'])
@@ -550,20 +560,22 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
             # measurement loops - for fixed field value, scan current values and measure and save
             for counter, fix_val in enumerate(fix_field_output):
+                fix_lbl[0] = str(round(fix_val, 3))
 
                 if counter == 0:
                     diff = abs(fix_val)
                 else:
                     diff = abs(fix_val - fix_field_output[counter-1])
-                amp.dacOutput(fix_val / float(control_dict['%s/DAC (Oe/V)' % fix]), control_dict['%s DAC Channel' % fix])
+                amp.dacOutput((fix_val / float(control_dict['%s/DAC (Oe/V)' % fix])), control_dict['%s DAC Channel' % fix])
                 time.sleep(charging(diff))
 
                 for pulse in pulse_width:
+                    pulse_lbl[0] = str(round(pulse, 3))
 
                     # setup K2400 here
                     keith_2400.fourWireOff()
-                    keith_2400.outputOn()
                     keith_2400.setCurrent(float(keith_dict['Sensing Current (mA)'].get()))
+                    keith_2400.outputOn()
                     # take initial resistance measurement?
                     index=1
                     data=[]
@@ -599,15 +611,13 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         display.see(END)
 
                     # save data
-                    save_method(control_dict['H Scan Direction'].get(), fix_val, pulse\
+                    save_method(control_dict['H Scan Direction'].get(), fix_val, pulse, \
                         current_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), resistance)
 
             # turn everything off at end of loop
-            amp.dacOutput(0, control_dict['%s DAC Channel'], % fix)
+            amp.dacOutput(0, control_dict['%s DAC Channel'] % fix)
             keith_2400.minimize()
             time.sleep(0.1)
-            keith_2400.fourWireOff()
-            keith_2400.outputOff()
 
             display.insert('end',"Measurement finished")
             display.see(END)

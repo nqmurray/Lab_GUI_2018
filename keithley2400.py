@@ -121,11 +121,12 @@ class Keithley2400:
         self.keithley2400.write(":SOUR:CLE:AUTO ON")  #source auto clear
         self.keithley2400.write(":INIT")
 
-    # reset device compliance and voltage to minimum values to avoid burning the devices when moving probes 
+    # sets the device to 200 kOhm (10 uA, 2.1 V) resistance mode to avoid burning device when probes are moved
     def minimize(self):
-        self.keithley2400.write(":SENS:FUNC 'VOLT'")
-        self.keithley2400.write(":SENS:VOLT:PROT MIN") # set compliance voltage to min
-        self.keithley2400.write(":SENS:VOLT:RANG MIN") # set current range to min
+        self.keithley2400.write(":SENS:FUNC 'RES'") # set to resistance measurement
+        self.keithley2400.write(":RES:MODE AUTO") # set at auto mode
+        self.keithley2400.write(":RES:RANG 20E4") # set to 200 kOhm mode (10 uA)
+
 
 if __name__ == '__main__':
     

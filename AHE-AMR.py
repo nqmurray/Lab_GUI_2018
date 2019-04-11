@@ -15,7 +15,7 @@ import time
 import threading
 from datetime import datetime
 from LockinAmp import lockinAmp
-from keithley2400 import Keithley2400
+from keithley2400_I import Keithley2400
 from keithley import Keithley
 
 root = Tk()
@@ -129,7 +129,7 @@ def main():
     # sets current directory to default (~/Documents/Measurements)
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
-    ani = animation.FuncAnimation(fig, animate, interval=200)
+    ani = animation.FuncAnimation(fig, animate, interval=200, fargs=[plot_title, x_lbl, y_lbl])
 
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
@@ -137,15 +137,15 @@ def main():
 
 
 # animation to plot data
-def animate(i):
+def animate(i, title, x, y):
     global scan_field_output, measured_values, curr_lbl, fix_lbl
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(plot_title)
-    ax.set_xlabel(x_lbl)
-    ax.set_ylabel(y_lbl)
-    ax.legend(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
+    ax.set_title(title)
+    ax.set_xlabel(x)
+    ax.set_ylabel(y)
+    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -384,13 +384,13 @@ def output_method(control_dict, mag_dict, lockin_dict):
     amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage'], lockin_dict['Frequency'])
     d = control_dict['H Output Direction'].get() # direction output variable
     t = mag_dict['Output Time (s)'].get() # output time
-    output = mag_dict['%s Field (Oe)' % d].get() # direction of output
+    output = mag_dict['%s Field (Oe)' % d].get() # output value
     interval = control_dict['%s/DAC (Oe/V)' % d] # conversion integral
 
-    # confirms output and interval are numbers
-    if output.lstrip('-').replace('.','',1).isdigit() and interval.lstrip('-').replace('.','',1).isdigit():
+    # confirms output is number
+    if output.lstrip('-').replace('.','',1).isdigit():
         # if output below threshold value, then have lockin amp output for t seconds
-        if float(output) / float(interval) < float(control_dict['%s DAC Limit']):
+        if float(output) / float(interval) < float(control_dict['%s DAC Limit' % d]):
             amp.dacOutput((float(output) / float(interval)), control_dict['%s DAC Channel' % d])
             time.sleep(float(t))
             amp.dacOutput(0, control_dict['%s DAC Channel' % d])
@@ -506,19 +506,19 @@ def save_method(H_dir, fix_val, current_val, x_values, y_values, display, direct
 # takes the difference between to scan values and tells how long to rest
 def charging(val):
     if val >= 2500:
-        return 5.0
+        return 7.0
     elif 1500 <= val < 2500:
-        return 3.0
+        return 5.0
     elif 1000 <= val < 1500:
-        return 1.0
+        return 3.0
     elif 500 <= val < 1000:
-        return 0.5
+        return 1.0
     elif 100 <= val < 500:
-        return 0.25
+        return 0.9
     elif 50 <= val < 100:
-        return 0.1
+        return 0.5
     else:
-        return 0
+        return 0.25
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
 def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
@@ -578,7 +578,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             # measurement loops - for fixed field value, measure at fixed current values, scan field and save
             for fix_val in fix_field_output:
                 # fixed output strength and channel
-                amp.dacOutput(fix_val / float(control_dict['%s DAC Limit' % fix]), control_dict['%s DAC Channel' % fix])
+                amp.dacOutput((fix_val / float(control_dict['%s/DAC (Oe/V)' % fix])), control_dict['%s DAC Channel' % fix])
                 # sets legend value for current fixed field output
                 fix_lbl[0] = str(round(fix_val, 3))
 
@@ -587,7 +587,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     curr_lbl[0] = str(round(current_val, 3))
                     # setup K2400 here
                     keith_2400.fourWireOff()
-                    keith_2400.setCurrent(current_val)
+                    keith_2400.setCurrent(round(current_val, 2))
+                    print(current_val)
                     keith_2400.outputOn()
                     # take initial resistance measurement?
                     index=1
@@ -635,8 +636,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             amp.dacOutput(0, control_dict['Hz DAC Channel'])
             keith_2400.minimize()
             time.sleep(0.1)
-            keith_2400.fourWireOff()
-            keith_2400.outputOff()
+
 
             display.insert('end',"Measurement finished")
             display.see(END)
