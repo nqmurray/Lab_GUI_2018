@@ -100,7 +100,8 @@ class Keithley:
             else:
                 result += i
      
-        return result    
+        return result
+
  
 if __name__ == '__main__':
     

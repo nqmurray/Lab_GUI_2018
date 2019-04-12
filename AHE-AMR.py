@@ -15,7 +15,7 @@ import time
 import threading
 from datetime import datetime
 from LockinAmp import lockinAmp
-from keithley2400_I import Keithley2400
+from keithley2400 import Keithley2400
 from keithley import Keithley
 
 root = Tk()
@@ -427,7 +427,7 @@ def quit_method(lockin_dict, display):
         amp.dacOutput(0, 3)
         amp.dacOutput(0, 4)
         keith_2400=Keithley2400('f') # Initiate K2400
-        keith_2400.minimize()
+        keith_2400.minimize() # set to low resistance
         time.sleep(0.1)
         keith_2400.fourWireOff() 
         keith_2400.outputOff()
@@ -514,11 +514,11 @@ def charging(val):
     elif 500 <= val < 1000:
         return 1.0
     elif 100 <= val < 500:
-        return 0.9
-    elif 50 <= val < 100:
         return 0.5
-    else:
+    elif 50 <= val < 100:
         return 0.25
+    else:
+        return 0.1
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
 def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
@@ -620,6 +620,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         # sleep time set to allow electromagnets to get to strength
                         time.sleep(charging(diff))
                         data = keith_2000.measureMulti(int(keith_dict['Averages'].get()))
+                        #time.sleep(0.1)
                         tmp = float(1000*data/current_val) # Voltage from K2000 / Current from K2400
                         measured_values.append(tmp)
                         display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, round(tmp, 4)))
