@@ -13,15 +13,17 @@ import matplotlib.animation as animation
 import os
 import time
 import threading
+import mss
 from datetime import datetime
 from LockinAmp import lockinAmp
 from keithley2400 import Keithley2400
 from keithley import Keithley
+from PIL import Image
 
 root = Tk()
-root.title('ST-FMR Measurement')
+root.title('Hz Simple MOKE')
 
-global scan_field_output, measured_values, dataplot, sens_lbl
+global scan_field_output, measured_values, dataplot, sens_lbl, x1, y1, x2, y2
 
 fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
@@ -29,45 +31,68 @@ scan_field_output = []
 measured_values = []
 sens_lbl = ['']
 
+x1=1086
+y1=350
+x2=1206
+y2=428
+
+def click(root2):
+    print("X1: %d, Y1: %d" %(root2.winfo_x(), root2.winfo_y()))
+    print("X2: %d, Y2: %d\n" %(root2.winfo_x()+root2.winfo_width(), root2.winfo_y()+root2.winfo_height()))
+    global y1
+    global x2
+    global y2
+    global x1
+    x1 = root2.winfo_x()
+    y1 = root2.winfo_y()
+    x2 = root2.winfo_x()+root2.winfo_width()
+    y2 = root2.winfo_y()+root2.winfo_height()
+
+def perfSettings():
+
+    perfFrame = Tk()
+
+    perfFrame.title("Determine Capture Area Coordinates")
+    perfFrame.configure(bg='#F2F2F2')
+    perfFrame.geometry("200x150")
+
+    btn = ttk.Button(master=perfFrame, text='box', command = lambda : click(perfFrame), width=10)
+    btn.pack()
+    perfFrame.protocol('WM_DELETE_WINDOW', quit) 
+    perfFrame.mainloop()
+
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
 def main():
 
     # plot labels
-    plot_title = "Realtime Hall Voltage vs H Plot"
+    plot_title = "Realtime MOKE Signal vs H Plot"
     x_lbl = "Applied Field (Oe)"
-    y_lbl = "Lockin Realtime Resistance (Ohm)"
+    y_lbl = "Realtime MOKE Signal (R+B+G)"
 
     # dictionaries of GUI contents
     # default initial values
     mag_dict = {
-                'Hx Field (Oe)': 1000,
-                'Hx Step (Oe)': 100,
+                'Hz Field (Oe)': 100,
+                'Hz Step (Oe)': 5,
                 'Output Time (s)': 1
                 }
 
-    # set default signal generator settings
-    signal_dict = {
-                'Power (dBm)': 9.7,
-                'Frequency (GHz)': 10,
-                'Frequency Step (GHz)': 0
-    }
-
     # default values required for initializing lockin via Pyvisa
-    lockin_dict = {
-                'Mode': '1st', # Set a default mode (1st or 2nd)
+    lockin_dict = {'Mode': '1st', # Set a default mode (1st or 2nd)
                 'Sensitivity': '10mV', # Set a default sensitivity range (mV or uV)
-                'Signal Voltage (V)': 0.7, # Set a default OSC signal voltage (V)
-                'Frequency (Hz)': 1171, # Set a default OSC frequency (Hz)
-                'Average': 3 # number of measurements averaged together
+                'Signal Voltage': 1, # Set a default OSC signal voltage (V)
+                'Frequency': 1171 # Set a default OSC frequency (Hz)
                 }
 
     # values set by various functions, define measurement settings
     control_dict = {
-                    'Field Step': 'Step', # set with make_extras()
-                    'I_app Step': 'Step', # set with make_extras()
-                    'H Output Direction': 'Hx', # set with make_buttons()
-                    'Hx DAC Channel': 3, # displayed in make_extras()
-                    'Hx/DAC (Oe/V)': 4291.9, # displayed in make_extras()
-                    'Hx DAC Limit': 1, # Voltage limit of X direction mag
+                    'H Output Direction': 'Hz', # set with make_buttons()
+                    'Hz DAC Channel': 1, # displayed in make_extras()
+                    'Hz/DAC (Oe/V)': 1029.5, # displayed in make_extras()
+                    'Hz DAC Limit': 0.25, # Voltage limit of X direction mag
                     'Display': '', # set with make_info()
                     'File Name': 'Sample Name', # set with make_extras(), used in save function
                     'Directory': ''# set with set_directory(), updated with change_directory()
@@ -91,8 +116,6 @@ def main():
 
     control_dict['Display'] = make_info(information_frame)
     mag_dict = make_form(settings_frame, mag_dict, 'Magnetic Settings')
-    signal_dict = make_form(settings_frame, signal_dict, 'Signal Settings')
-    make_lockin(settings_frame, lockin_dict)
     make_extras(settings_frame, mag_dict, control_dict)
     make_plot(plt_frame, plot_title, x_lbl, y_lbl)
     make_buttons(buttons_frame, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict, signal_dict)
@@ -187,36 +210,6 @@ def make_info(root):
     return listbox
 
 
-# builds the lockin control GUI panel
-def make_lockin(root, lockin_dict):
-    lf = LabelFrame(root, text= 'Lockin Settings')
-    lf.grid(ipadx=2, ipady=2, sticky='nsew')
-
-    # option menu for Lockin Mode
-    lockin_dict['Mode'] = StringVar(); lockin_dict['Mode'].set('1st')
-    mode = ttk.OptionMenu(lf, lockin_dict['Mode'], '1st', '1st', '2nd')
-    mode_lbl = Label(lf, width=15, text='Mode: ', anchor='w')
-
-    # option menu for Lockin Sensitivity
-    lockin_dict['Sensitivity'] = StringVar(); lockin_dict['Sensitivity'].set('10uV')
-    sens = ttk.OptionMenu(lf, lockin_dict['Sensitivity'], "10uV","1mV","2mV","5mV","10mV","20mV","50mV","100mV","200mV","10uV","20uV","50uV","100uV")
-    sens_lbl = Label(lf, width=15, text='Sensitivity: ', anchor='w')
-
-    #grid the above option menus and labels
-    mode_lbl.grid(row=0, column=0, sticky='nsew')
-    mode.grid(row=0, column=1, sticky='nsew')
-    sens_lbl.grid(row=1, column=0, sticky='nsew')
-    sens.grid(row=1, column=1, sticky='nsew')
-
-    # loop over variables that only need entry widgets (excluding first two, initialized above)
-    for counter, x in enumerate(lockin_dict.items()):
-        if counter > 1:
-            lab = Label(lf, width=20, text=x[0], anchor='w')
-            ent = Entry(lf, width=20); ent.insert(0, str(x[1]))
-            lab.grid(row=counter, column=0, sticky='nsew')
-            ent.grid(row=counter, column=1, sticky='nsew')
-            lockin_dict[x[0]] = ent # set dictionary value to entry widget
-
 
 # extra radio buttons and selectors
 def make_extras(root, mag_dict, control_dict):
@@ -225,12 +218,12 @@ def make_extras(root, mag_dict, control_dict):
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
 
     # lockin DAC labels
-    Hx_lbl = Label(lf, width=20, text=('Hx DAC: %s' % control_dict['Hx DAC Channel']), anchor='w')
-    Hx_conv_lbl = Label(lf, width=20, text=('Hx DAC: %s' % control_dict['Hx/DAC (Oe/V)']), anchor='w')
+    Hz_lbl = Label(lf, width=20, text=('Hx DAC: %s' % control_dict['Hz DAC Channel']), anchor='w')
+    Hz_conv_lbl = Label(lf, width=20, text=('Hx DAC: %s' % control_dict['Hz/DAC (Oe/V)']), anchor='w')
     
     # labels for DAC channels and conversion values, now only editable back end.
-    Hx_lbl.grid(row=2, column=0, sticky='nsew')
-    Hx_conv_lbl.grid(row=2, column=1, sticky='nsew')
+    Hz_lbl.grid(row=2, column=0, sticky='nsew')
+    Hz_conv_lbl.grid(row=2, column=1, sticky='nsew')
 
     # file name label and entry
     file_lab = Label(lf, width=20, text='File Name', anchor='w')
@@ -241,17 +234,17 @@ def make_extras(root, mag_dict, control_dict):
 
 
 # creates and grids buttons
-def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict, signal_dict):
+def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl):
 
     control_dict['H Output Direction'] = StringVar(); control_dict['H Output Direction'].set('Hz')
 
     # button list
     measure_button = Button(root, text='Measure', \
-        command=lambda:measure_method(mag_dict, control_dict, lockin_dict, signal_dict))
+        command=lambda:measure_method(mag_dict, control_dict, lockin_dict))
     dir_button = Button(root, text='Change Directory', \
         command=lambda:change_directory(control_dict['Directory'], control_dict['Display']))
     quit_button = Button(root, text='Quit', \
-        command=lambda:quit_method(control_dict['Display'], lockin_dict, signal_dict))
+        command=lambda:quit_method(control_dict['Display'], lockin_dict))
     clear_button = Button(root, text='Clear', \
         command=lambda:clear_method(plot_title, x_lbl, y_lbl, control_dict['Display']))
     output_button = Button(root, text='Output', \
@@ -308,16 +301,16 @@ def output_method(control_dict, mag_dict, lockin_dict):
     display = control_dict['Display']
     amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
     t = mag_dict['Output Time (s)'].get() # output time
-    output = mag_dict['Hx Field (Oe)'].get() # output value
-    interval = control_dict['Hx/DAC (Oe/V)'] # conversion integral
+    output = mag_dict['Hz Field (Oe)'].get() # output value
+    interval = control_dict['Hz/DAC (Oe/V)'] # conversion integral
 
     # confirms output is number
     if output.lstrip('-').replace('.','',1).isdigit():
         # if output below threshold value, then have lockin amp output for t seconds
-        if float(output) / float(interval) < float(control_dict['Hx DAC Limit']):
-            amp.dacOutput((float(output) / float(interval)), control_dict['Hx DAC Channel'])
+        if float(output) / float(interval) < float(control_dict['Hz DAC Limit']):
+            amp.dacOutput((float(output) / float(interval)), control_dict['Hz DAC Channel'])
             time.sleep(float(t))
-            amp.dacOutput(0, control_dict['Hx DAC Channel'])
+            amp.dacOutput(0, control_dict['Hz DAC Channel'])
             display.insert('end', 'Hx output for %s second(s)' % t)
             display.see(END)
         else:
@@ -387,15 +380,11 @@ def make_list(max_val, step_val):
 
 
 # takes file parameters and results and saves the file, should have 5 lines before data is saved
-def save_method(x_values, y_values, display, directory, name, lockin_dict, signal_dict):
+def save_method(x_values, y_values, display, directory, name):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+str(name)+"_ST_FMR_"+str(signal_dict['Frequency (GHz)'].get())+"GHz_"+str(signal_dict['Power (dBm)'].get())+"_dBm"+str(stamp), "w")
-    file.write("Sensitivity: "+str(lockin_dict['Sensitivity'].get())+"\n")
-    file.write("Mode: "+str(lockin_dict['Mode'].get())+" Signal Voltage: "+str(lockin_dict['Signal Voltage (V)'])+"V\n")
-    file.write("Lockin Frequency: "+str(lockin_dict['Frequency (Hz)'].get())+"Hz\n")
-    file.write("Averages: "+ str(lockin_dict['Average'].get())+"\n")
-    file.write("Number"+" "+"Hx Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
+    file = open(str(directory)+"/"+str(name)+"_Simple_MOKE_"+str(stamp), "w")
+    file.write("Number"+" "+"Hx Field(Oe)"+" "+"MOKE Signal (A.U.)"+"\n")
 
     for counter, value in enumerate(y_values):
         file.write(str(counter)+" "+str(x_values[counter])+" "+str(value)+"\n")
@@ -405,6 +394,35 @@ def save_method(x_values, y_values, display, directory, name, lockin_dict, signa
     display.insert('end', stamp)
     display.insert('end', "The Measurement data is saved.")
     display.see(END)
+
+
+# finds the luminosity of the bbox area
+def imageMethodFAST(X1,Y1,X2,Y2):
+
+    with mss.mss() as sct:
+        monitor = {'top': Y1, 'left': X1, 'width': X2-X1, 'height': Y2-Y1}
+        sct_img = sct.grab(monitor)
+        image = Image.frombytes('RGB', sct_img.size, sct_img.rgb)
+
+    width=image.size[0]
+    height=image.size[1]
+
+    R=0
+    G=0
+    B=0
+
+    for x in range(width):
+        for y in range(height):
+            R+=image.getpixel((x, y))[0]
+            G+=image.getpixel((x, y))[1]
+            B+=image.getpixel((x, y))[2]
+
+    R=R/(width*height)
+    G=G/(width*height)
+    B=B/(width*height)
+
+    L=R+G+B
+    return L
 
 
 # takes the difference between to scan values and tells how long to rest
@@ -425,7 +443,7 @@ def charging(val):
         return 0.05
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
-def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
+def measure_method(mag_dict, control_dict, lockin_dict):
     
     display = control_dict['Display']
 
@@ -437,13 +455,13 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
         sens_lbl = ['']
 
         # builds list from step and max value
-        scan_field_output = make_list(mag_dict['Hx Field (Oe)'].get(), mag_dict['Hx Step (Oe)'].get())
+        scan_field_output = make_list(mag_dict['Hz Field (Oe)'].get(), mag_dict['Hz Step (Oe)'].get())
         # list is built to be negatvie to positive, but measurement needs to be pos to neg
         scan_field_output = reversed(scan_field_output)
 
 
         # ensures output voltages will not exceed amp thresholds
-        if max(scan_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']):
+        if max(scan_field_output) / float(control_dict['Hz/DAC (Oe/V)']) < float(control_dict['Hz DAC Limit']):
             
             # initialize machines
             amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
@@ -458,18 +476,18 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
                     diff = abs(scan_val)
                 else:
                     diff = abs(scan_val - scan_field_output[counter-1])
-                amp.dacOutput((scan_val / float(control_dict['Hx/DAC (Oe/V)'])), control_dict['Hx DAC Channel'])
+                amp.dacOutput((scan_val / float(control_dict['Hz/DAC (Oe/V)'])), control_dict['Hz DAC Channel'])
                 time.sleep(charging(diff))
-                tmp = 1000 * float(round(amp.readX(lockin_dict['Average'].get()), 4)) # take average from Lockin measurements
+                tmp = imageMethodFAST(x1, y1, x2, y2) # get image luminosity
                 measured_values.append(tmp)
-                display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan_val, tmp))
+                display.insert('end', 'Applied Hz Field Value: %s (Oe)      MOKE Signal: %s (A.U.)' %(scan_val, tmp))
                 display.see(END)
 
                 # save data
-                save_method(scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), lockin_dict, signal_dict)
+                save_method(scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get())
 
             # turn everything off at end of loop
-            amp.dacOutput(0, control_dict['Hx DAC Channel'])
+            amp.dacOutput(0, control_dict['Hz DAC Channel'])
 
             display.insert('end',"Measurement finished")
             display.see(END)
