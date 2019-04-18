@@ -478,15 +478,15 @@ def convert_to_list(input_list):
 def save_method(H_dir, fix_val, pulse, x_values, y_values, display, directory, name, resistance):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+name+"_SOT_Switching"+str(fix_val)+"Oe_"+str(stamp), "w")
-    file.write(H_dir+" field: "+str(fix_val)+"(Oe)\n")
-    file.write(str(pulse)+" (s) pulse width \n")
+    file = open(str(directory)+"/"+name+"_SOT_Switching"+str(round(fix_val, 3))+"Oe_"+str(stamp), "w")
+    file.write(H_dir+" field: "+str(round(fix_val, 3))+"(Oe)\n")
+    file.write(str(round(pulse,3))+" (s) pulse width \n")
     file.write("Initial Resistance: "+str(resistance)+"Ohm\n")
     file.write("\n")
     file.write("Number"+" "+"Applied Current (mA)"+" "+"Resistance(Ohm)"+"\n")
 
     for counter, value in enumerate(y_values):
-        file.write(str(counter)+" "+str(x_values[counter])+" "+str(value)+"\n")
+        file.write(str(counter)+" "+str(round(x_values[counter],3))+" "+str(value)+"\n")
         
     file.closed
 
@@ -583,7 +583,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     while index<=5: #Average of five measurements
                         data=data+keith_2400.measureOnce()
                         index+=1
-                    resistance = data[1]/data[2]                
+                    resistance = round(data[1]/data[2], 3)                
                     display.insert('end',"Measured current: %f mA" %(1000*data[2]))
                     display.insert('end',"Measured voltage: %f V" %data[1])
                     display.insert('end',"Measured resistance: %f Ohm" %(resistance))
@@ -597,7 +597,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
                     for current_val in current_output:
 
-                        keith_2400.setCurrent(current_val)
+                        keith_2400.setCurrent(round(current_val,4))
                         time.sleep(pulse)
                         keith_2400.setCurrent(0)
                         time.sleep(float(keith_dict['Delay (s)'].get()))
@@ -605,9 +605,9 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         keith_2400.setCurrent(float(keith_dict['Sensing Current (mA)'].get()))
                         time.sleep(float(keith_dict['Read Pulse Width (s)'].get()))
                         data=keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                        tmp = float(1000 * data / float(keith_dict['Sensing Current (mA)'].get()))
+                        tmp = round(float(1000 * data / float(keith_dict['Sensing Current (mA)'].get())), 4)
                         measured_values.append(tmp)
-                        display.insert('end', 'Applied Pulse Strength: %s (mA)      Measured Resistance: %s (Ohm)' %(current_val, tmp))
+                        display.insert('end', 'Applied Pulse Strength: %s (mA)      Measured Resistance: %s (Ohm)' %(round(current_val,4), tmp))
                         display.see(END)
 
                     # save data

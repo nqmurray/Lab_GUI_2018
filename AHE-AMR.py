@@ -587,7 +587,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     curr_lbl[0] = str(round(current_val, 3))
                     # setup K2400 here
                     keith_2400.fourWireOff()
-                    keith_2400.setCurrent(round(current_val, 2))
+                    keith_2400.setCurrent(round(current_val, 4))
                     print(current_val)
                     keith_2400.outputOn()
                     # take initial resistance measurement?
@@ -597,7 +597,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     while index<=5: #Average of five measurements
                         data=data+keith_2400.measureOnce()
                         index+=1
-                    resistance = data[1]/data[2]                
+                    resistance = round(data[1]/data[2],4)                
                     display.insert('end',"Measured current: %f mA" %(1000*data[2]))
                     display.insert('end',"Measured voltage: %f V" %data[1])
                     display.insert('end',"Measured resistance: %f Ohm" %(resistance))
@@ -620,7 +620,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         # sleep time set to allow electromagnets to get to strength
                         time.sleep(charging(diff))
                         data = keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                        tmp = float(1000*data/current_val) # Voltage from K2000 / Current from K2400
+                        tmp = round(float(1000*data/current_val),4) # Voltage from K2000 / Current from K2400
                         measured_values.append(round(tmp, 4))
                         display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, round(tmp, 4)))
                         display.see(END)

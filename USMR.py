@@ -443,14 +443,14 @@ def convert_to_list(input_list):
 def save_method(sense_val, x_values, y_values, display, directory, name, resistance):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+str(name)+"_USMR_"+"Hx_scan_"+"Oe_"+str(sense_val)+"mA_"+str(stamp), "w")
-    file.write("Sensing current: "+str(sense_val)+"(mA)\n")
+    file = open(str(directory)+"/"+str(name)+"_USMR_"+"Hx_scan_"+"Oe_"+str(round(sense_val,4))+"mA_"+str(stamp), "w")
+    file.write("Sensing current: "+str(round(sense_val,4))+"(mA)\n")
     file.write("Initial Resistance: "+str(resistance)+"Ohm\n")
     file.write("\n\n")
     file.write("Number"+" "+"Hx Field(Oe)"+" "+"Avg Resistance(Ohm)"+"\n")
 
     for counter, value in enumerate(y_values):
-        file.write(str(counter)+" "+str(x_values[counter])+" "+str(value)+"\n")
+        file.write(str(counter)+" "+str(round(x_values[counter],4))+" "+str(value)+"\n")
         
     file.closed
 
@@ -527,7 +527,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
                 # setup K2400 here
                 keith_2400.fourWireOff()
-                keith_2400.setCurrent(sense_val)
+                keith_2400.setCurrent(round(sense_val,4))
                 keith_2400.outputOn()
                 # take initial resistance measurement?
                 index=1
@@ -536,7 +536,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                 while index<=5: #Average of five measurements
                     data=data+keith_2400.measureOnce()
                     index+=1
-                resistance = data[1]/data[2]                
+                resistance = round(data[1]/data[2], 4)                
                 display.insert('end',"Measured current: %f mA" %(1000*data[2]))
                 display.insert('end',"Measured voltage: %f V" %data[1])
                 display.insert('end',"Measured resistance: %f Ohm" %(resistance))
@@ -559,13 +559,13 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     amp.dacOutput((scan_val / float(control_dict['Hx/DAC (Oe/V)'])), control_dict['Hx DAC Channel'])
                     time.sleep(charging(diff))
                     keith_2400.outputOn()
-                    keith_2400.setCurrent(sense_val)
+                    keith_2400.setCurrent(round(sense_val,4))
                     time.sleep(float(keith_dict['Delay (s)'].get())) # delay before measuring
                     pos_data = keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                    keith_2400.setCurrent(-sense_val)
+                    keith_2400.setCurrent(round(-sense_val,4))
                     time.sleep(float(keith_dict['Delay (s)'].get())) # delay before measuring
                     neg_data = keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                    tmp = float((abs(pos_data) - abs(neg_data))*1000/sense_val) # voltage from K2000 / sense current
+                    tmp = round(float((abs(pos_data) - abs(neg_data))*1000/sense_val), 4) # voltage from K2000 / sense current
                     measured_values.append(tmp)
                     display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Avg Resistance: %s (Ohm)' %(scan_val, tmp))
                     display.see(END)
