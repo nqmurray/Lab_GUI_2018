@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 import os
@@ -44,13 +44,19 @@ def main():
                 'Output Time (s)': 1
                 }
 
+    # set default signal generator settings
+    signal_dict = {
+                'Power (dBm)': 9.7,
+                'Frequency (GHz)': 10,
+                'Frequency Step (GHz)': 0
+    }
 
     # default values required for initializing lockin via Pyvisa
     lockin_dict = {
                 'Mode': '1st', # Set a default mode (1st or 2nd)
                 'Sensitivity': '10mV', # Set a default sensitivity range (mV or uV)
                 'Signal Voltage (V)': 0.7, # Set a default OSC signal voltage (V)
-                'Frequency (Hz)': 1171 # Set a default OSC frequency (Hz)
+                'Frequency (Hz)': 1171, # Set a default OSC frequency (Hz)
                 'Average': 3 # number of measurements averaged together
                 }
 
@@ -85,10 +91,11 @@ def main():
 
     control_dict['Display'] = make_info(information_frame)
     mag_dict = make_form(settings_frame, mag_dict, 'Magnetic Settings')
+    signal_dict = make_form(settings_frame, signal_dict, 'Signal Settings')
     make_lockin(settings_frame, lockin_dict)
     make_extras(settings_frame, mag_dict, control_dict)
     make_plot(plt_frame, plot_title, x_lbl, y_lbl)
-    make_buttons(buttons_frame, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict)
+    make_buttons(buttons_frame, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict, signal_dict)
 
     #weights columns for all multiple weight=1 columns
     weight(buttons_frame)
@@ -181,18 +188,18 @@ def make_info(root):
 
 
 # builds the lockin control GUI panel
-def make_lockin(root, lockin_dict)
+def make_lockin(root, lockin_dict):
     lf = LabelFrame(root, text= 'Lockin Settings')
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
 
     # option menu for Lockin Mode
     lockin_dict['Mode'] = StringVar(); lockin_dict['Mode'].set('1st')
-    mode = tkk.OptionMenu(lf, lockin_dict['Mode'], '1st', '1st', '2nd')
+    mode = ttk.OptionMenu(lf, lockin_dict['Mode'], '1st', '1st', '2nd')
     mode_lbl = Label(lf, width=15, text='Mode: ', anchor='w')
 
     # option menu for Lockin Sensitivity
     lockin_dict['Sensitivity'] = StringVar(); lockin_dict['Sensitivity'].set('10uV')
-    sens = tkk.OptionMenu(lf, lockin_dict['Sensitivity'], "10uV","1mV","2mV","5mV","10mV","20mV","50mV","100mV","200mV","10uV","20uV","50uV","100uV")
+    sens = ttk.OptionMenu(lf, lockin_dict['Sensitivity'], "10uV","1mV","2mV","5mV","10mV","20mV","50mV","100mV","200mV","10uV","20uV","50uV","100uV")
     sens_lbl = Label(lf, width=15, text='Sensitivity: ', anchor='w')
 
     #grid the above option menus and labels
@@ -234,17 +241,17 @@ def make_extras(root, mag_dict, control_dict):
 
 
 # creates and grids buttons
-def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict):
+def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict, signal_dict):
 
     control_dict['H Output Direction'] = StringVar(); control_dict['H Output Direction'].set('Hz')
 
     # button list
     measure_button = Button(root, text='Measure', \
-        command=lambda:measure_method(mag_dict, control_dict, lockin_dict))
+        command=lambda:measure_method(mag_dict, control_dict, lockin_dict, signal_dict))
     dir_button = Button(root, text='Change Directory', \
         command=lambda:change_directory(control_dict['Directory'], control_dict['Display']))
     quit_button = Button(root, text='Quit', \
-        command=lambda:quit_method(control_dict['Display'], lockin_dict))
+        command=lambda:quit_method(control_dict['Display'], lockin_dict, signal_dict))
     clear_button = Button(root, text='Clear', \
         command=lambda:clear_method(plot_title, x_lbl, y_lbl, control_dict['Display']))
     output_button = Button(root, text='Output', \
@@ -331,7 +338,7 @@ def clear_method(title, x_label, y_label, display):
 
 
 # turns off all outputs and then quits the program
-def quit_method(display, lockin_dict):
+def quit_method(display, lockin_dict, signal_dict):
 
     global root
 
@@ -380,13 +387,13 @@ def make_list(max_val, step_val):
 
 
 # takes file parameters and results and saves the file, should have 5 lines before data is saved
-def save_method(x_values, y_values, display, directory, name, lockin_dict):
+def save_method(x_values, y_values, display, directory, name, lockin_dict, signal_dict):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+str(name)+"_ST_FMR_"+str(stamp), "w")
+    file = open(str(directory)+"/"+str(name)+"_ST_FMR_"+str(signal_dict['Frequency (GHz)'].get())+"GHz_"+str(signal_dict['Power (dBm)'].get())+"_dBm"+str(stamp), "w")
     file.write("Sensitivity: "+str(lockin_dict['Sensitivity'].get())+"\n")
     file.write("Mode: "+str(lockin_dict['Mode'].get())+" Signal Voltage: "+str(lockin_dict['Signal Voltage (V)'])+"V\n")
-    file.write("Frequency: "+str(lockin_dict['Frequency (Hz)'].get())+"Hz\n")
+    file.write("Lockin Frequency: "+str(lockin_dict['Frequency (Hz)'].get())+"Hz\n")
     file.write("Averages: "+ str(lockin_dict['Average'].get())+"\n")
     file.write("Number"+" "+"Hx Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
 
@@ -418,7 +425,7 @@ def charging(val):
         return 0.05
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
-def measure_method(mag_dict, control_dict, lockin_dict):
+def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
     
     display = control_dict['Display']
 
