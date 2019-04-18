@@ -494,15 +494,13 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             scan_field_output = make_list(mag_dict['Hx Field (Oe)'].get(), mag_dict['Hx Step (Oe)'].get())
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(scan_field_output[0:-1])
-            for x in inverse:
-                scan_field_output.append(x)
+            scan_field_output += inverse
         else:
             # takes string and converts to list
             scan_field_output = convert_to_list(mag_dict['Hx Field (Oe)'].get())
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(scan_field_output[0:-1])
-            for x in inverse:
-                scan_field_output.append(x)
+            scan_field_output += inverse
 
         # create the list of current values
         if control_dict['I_app Step'].get() == 'Step':

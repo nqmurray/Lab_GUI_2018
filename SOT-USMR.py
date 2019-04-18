@@ -514,16 +514,14 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(current_output[0:-1])
-            for x in inverse:
-                current_output.append(x)
+            current_output += inverse
             # sense list
             sense_output = make_list(keith_dict['Sensing Current (mA)'].get(), keith_dict['Sensing Current Step (mA)'].get())
         else: 
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(current_output[0:-1])
-            for x in inverse:
-                current_output.append(x)
+            current_output += inverse
             # sense list
             sense_output = convert_to_list(keith_dict['Sensing Current (mA)'].get())
 

@@ -460,8 +460,9 @@ def measure_method(mag_dict, control_dict, lockin_dict):
 
         # builds list from step and max value
         scan_field_output = make_list(mag_dict['Hz Field (Oe)'].get(), mag_dict['Hz Step (Oe)'].get())
-        # list is built to be negatvie to positive, but measurement needs to be pos to neg
-        scan_field_output.reverse()
+        # take inverse list and add it on, creating the full list values to measure at
+        inverse = reversed(scan_field_output[0:-1])
+        scan_field_output += inverse
 
 
         # ensures output voltages will not exceed amp thresholds

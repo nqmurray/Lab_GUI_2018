@@ -601,14 +601,12 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         if control_dict['I_app Step'].get() == 'Step': 
             current_output = make_list(keith_dict['Current (mA)'].get(), keith_dict['Current Step (mA)'].get())
             inverse = reversed(current_output[0:-1])
-            for x in inverse:
-                current_output.append(x)
+            current_output += inverse
             pulse_width = make_list(keith_dict['Write Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
         else:
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
             inverse = reversed(current_output[0:-1])
-            for x in inverse:
-                current_output.append(x)
+            current_output += inverse
             pulse_width = convert_to_list(keith_dict['Write Pulse Width (s)']) 
 
         # ensures output voltages will not exceed amp thresholds
