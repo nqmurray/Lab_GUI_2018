@@ -83,8 +83,8 @@ def main():
     # default values required for initializing lockin via Pyvisa
     lockin_dict = {'Mode': '1st', # Set a default mode (1st or 2nd)
                 'Sensitivity': '10mV', # Set a default sensitivity range (mV or uV)
-                'Signal Voltage': 1, # Set a default OSC signal voltage (V)
-                'Frequency': 1171 # Set a default OSC frequency (Hz)
+                'Signal Voltage (V)': 1, # Set a default OSC signal voltage (V)
+                'Frequency (Hz)': 1171 # Set a default OSC frequency (Hz)
                 }
 
     # values set by various functions, define measurement settings
@@ -118,7 +118,7 @@ def main():
     mag_dict = make_form(settings_frame, mag_dict, 'Magnetic Settings')
     make_extras(settings_frame, mag_dict, control_dict)
     make_plot(plt_frame, plot_title, x_lbl, y_lbl)
-    make_buttons(buttons_frame, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict, signal_dict)
+    make_buttons(buttons_frame, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict)
 
     #weights columns for all multiple weight=1 columns
     weight(buttons_frame)
@@ -147,6 +147,10 @@ def main():
     ani = animation.FuncAnimation(fig, animate, interval=200, fargs=[plot_title, x_lbl, y_lbl])
 
     root.protocol('WM_DELETE_WINDOW', quit) 
+
+    th2 = threading.Thread(target=perfSettings)
+    th2.daemon = True
+    th2.start()
     root.mainloop()
 #----------------------------------------END OF MAIN-------------------------------------------#
 
@@ -234,7 +238,7 @@ def make_extras(root, mag_dict, control_dict):
 
 
 # creates and grids buttons
-def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl):
+def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_dict):
 
     control_dict['H Output Direction'] = StringVar(); control_dict['H Output Direction'].set('Hz')
 
@@ -299,7 +303,7 @@ def change_directory(var, display):
 # applies a field H in the given direction at a given strength
 def output_method(control_dict, mag_dict, lockin_dict):
     display = control_dict['Display']
-    amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
+    amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage (V)'], lockin_dict['Frequency (Hz)'])
     t = mag_dict['Output Time (s)'].get() # output time
     output = mag_dict['Hz Field (Oe)'].get() # output value
     interval = control_dict['Hz/DAC (Oe/V)'] # conversion integral
@@ -331,14 +335,14 @@ def clear_method(title, x_label, y_label, display):
 
 
 # turns off all outputs and then quits the program
-def quit_method(display, lockin_dict, signal_dict):
+def quit_method(display, lockin_dict):
 
     global root
 
     q = messagebox.askquestion('Quit', 'Are you sure you want to quit?')
 
     if q == 'yes':
-        amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
+        amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage (V)'], lockin_dict['Frequency (Hz)'])
         amp.dacOutput(0, 1)
         amp.dacOutput(0, 2)
         amp.dacOutput(0, 3)
@@ -457,14 +461,14 @@ def measure_method(mag_dict, control_dict, lockin_dict):
         # builds list from step and max value
         scan_field_output = make_list(mag_dict['Hz Field (Oe)'].get(), mag_dict['Hz Step (Oe)'].get())
         # list is built to be negatvie to positive, but measurement needs to be pos to neg
-        scan_field_output = reversed(scan_field_output)
+        scan_field_output.reverse()
 
 
         # ensures output voltages will not exceed amp thresholds
         if max(scan_field_output) / float(control_dict['Hz/DAC (Oe/V)']) < float(control_dict['Hz DAC Limit']):
             
             # initialize machines
-            amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
+            amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage (V)'], lockin_dict['Frequency (Hz)'])
 
             # intializes the measurement data list
             measured_values = []
@@ -499,7 +503,7 @@ def measure_method(mag_dict, control_dict, lockin_dict):
         #----------------------------END measure_loop----------------------------------#
 
     # Only one thread allowed. This is a cheap and easy workaround so we don't have to stop threads
-    if threading.active_count() == 1:
+    if threading.active_count() == 2:
         # thread is set to Daemon so if mainthread is quit, it dies
         t = threading.Thread(target=measure_loop, name='measure_thread', daemon=True)
         t.start()

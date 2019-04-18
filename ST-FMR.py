@@ -306,7 +306,7 @@ def change_directory(var, display):
 # applies a field H in the given direction at a given strength
 def output_method(control_dict, mag_dict, lockin_dict):
     display = control_dict['Display']
-    amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
+    amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), float(lockin_dict['Signal Voltage (V)'].get()), int(lockin_dict['Frequency (Hz)'].get()))
     t = mag_dict['Output Time (s)'].get() # output time
     output = mag_dict['Hx Field (Oe)'].get() # output value
     interval = control_dict['Hx/DAC (Oe/V)'] # conversion integral
@@ -345,7 +345,7 @@ def quit_method(display, lockin_dict, signal_dict):
     q = messagebox.askquestion('Quit', 'Are you sure you want to quit?')
 
     if q == 'yes':
-        amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
+        amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), float(lockin_dict['Signal Voltage (V)'].get()), int(lockin_dict['Frequency (Hz)'].get()))
         amp.dacOutput(0, 1)
         amp.dacOutput(0, 2)
         amp.dacOutput(0, 3)
@@ -439,14 +439,14 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
         # builds list from step and max value
         scan_field_output = make_list(mag_dict['Hx Field (Oe)'].get(), mag_dict['Hx Step (Oe)'].get())
         # list is built to be negatvie to positive, but measurement needs to be pos to neg
-        scan_field_output = reversed(scan_field_output)
+        scan_field_output.reverse()
 
 
         # ensures output voltages will not exceed amp thresholds
         if max(scan_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']):
             
             # initialize machines
-            amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), lockin_dict['Signal Voltage (V)'].get(), lockin_dict['Frequency (Hz)'].get())
+            amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), float(lockin_dict['Signal Voltage (V)'].get()), int(lockin_dict['Frequency (Hz)'].get()))
 
             # intializes the measurement data list
             measured_values = []
