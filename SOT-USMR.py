@@ -40,7 +40,6 @@ def main():
     # dictionaries of GUI contents
     # default initial values
     mag_dict = {'Hz Field (Oe)': 0,
-                'Hz Step (Oe)': 0,
                 'Hx Field (Oe)': 0,
                 'Hx Step (Oe)': 0,
                 'Output Time (s)': 1
@@ -281,17 +280,11 @@ def field_input(var, mag_dict, display):
     if var == 'User':
         mag_dict['Hx Field (Oe)'].delete(0, len(mag_dict['Hx Field (Oe)'].get())) # clear entry
         mag_dict['Hx Field (Oe)'].insert(0, '-1, 0, -1'); mag_dict['Hx Field (Oe)'].update() # list entry
-        mag_dict['Hz Field (Oe)'].delete(0, len(mag_dict['Hz Field (Oe)'].get())) # clear entry
-        mag_dict['Hz Field (Oe)'].insert(0, '-1, 0, -1'); mag_dict['Hz Field (Oe)'].update() # list entry
         mag_dict['Hx Step (Oe)'].config(state=DISABLED); mag_dict['Hx Step (Oe)'].update() # disable step function
-        mag_dict['Hz Step (Oe)'].config(state=DISABLED); mag_dict['Hz Step (Oe)'].update() # disable step function
     else:
         mag_dict['Hx Field (Oe)'].delete(0, len(mag_dict['Hx Field (Oe)'].get())) # clear entry
         mag_dict['Hx Field (Oe)'].insert(0, '0'); mag_dict['Hx Field (Oe)'].update() # step entry
-        mag_dict['Hz Field (Oe)'].delete(0, len(mag_dict['Hz Field (Oe)'].get())) # clear entry
-        mag_dict['Hz Field (Oe)'].insert(0, '0'); mag_dict['Hz Field (Oe)'].update() # step entry
-        mag_dict['Hx Step (Oe)'].config(state=NORMAL); mag_dict['Hx Step (Oe)'].update() # enable step function
-        mag_dict['Hz Step (Oe)'].config(state=NORMAL); mag_dict['Hz Step (Oe)'].update() # enable step function    
+        mag_dict['Hx Step (Oe)'].config(state=NORMAL); mag_dict['Hx Step (Oe)'].update() # enable step function 
 
     display.insert('end', '%s loop type selected for applied fields.' % var)
     display.see(END)
