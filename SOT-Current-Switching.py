@@ -498,19 +498,19 @@ def save_method(H_dir, fix_val, pulse, x_values, y_values, display, directory, n
 # takes the difference between to scan values and tells how long to rest
 def charging(val):
     if val >= 2500:
-        return 5.0
+        return 7.0
     elif 1500 <= val < 2500:
-        return 3.0
+        return 5.0
     elif 1000 <= val < 1500:
-        return 1.0
+        return 3.0
     elif 500 <= val < 1000:
-        return 0.5
+        return 1.0
     elif 100 <= val < 500:
-        return 0.25
+        return 0.5
     elif 50 <= val < 100:
         return 0.1
     else:
-        return 0
+        return 0.02
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
 def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):

@@ -486,7 +486,7 @@ def convert_to_list(input_list):
 def save_method(H_dir, fix_val, current_val, x_values, y_values, display, directory, m_type, name, resistance):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+name+"_"+m_type+"_"+H_dir+"_scan_"+str(fix_val)+"Oe_"+str(current_val)+"mA_"+str(stamp), "w")
+    file = open(str(directory)+"/"+name+"_"+m_type+"_"+H_dir+"_scan_"+str(round(fix_val, 3))+"Oe_"+str(round(current_val,3))+"mA_"+str(stamp), "w")
     file.write(H_dir+" field: "+str(fix_val)+"(Oe)\n")
     file.write("Applied current: "+str(current_val)+"(mA)\n")
     file.write("Initial Resistance: "+str(resistance)+"Ohm\n")
@@ -516,9 +516,9 @@ def charging(val):
     elif 100 <= val < 500:
         return 0.5
     elif 50 <= val < 100:
-        return 0.25
-    else:
         return 0.1
+    else:
+        return 0.02
 
 # measurement loop, iterates over values of a list built from parameters in dictionaries
 def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
@@ -620,11 +620,11 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         # sleep time set to allow electromagnets to get to strength
                         time.sleep(charging(diff))
                         data = keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                        #time.sleep(0.1)
                         tmp = float(1000*data/current_val) # Voltage from K2000 / Current from K2400
-                        measured_values.append(tmp)
+                        measured_values.append(round(tmp, 4))
                         display.insert('end', 'Applied %s Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan, scan_val, round(tmp, 4)))
                         display.see(END)
+
 
                     # save data
                     save_method(control_dict['H Scan Direction'].get(), fix_val, current_val, \
