@@ -17,17 +17,18 @@ from datetime import datetime
 from LockinAmp import lockinAmp
 from keithley2400 import Keithley2400
 from keithley import Keithley
+from HP8341 import HP8341
 
 root = Tk()
 root.title('ST-FMR Measurement')
 
-global scan_field_output, measured_values, dataplot, sens_lbl
+global scan_field_output, measured_values, dataplot, freq_lbl
 
 fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 scan_field_output = []
 measured_values = []
-sens_lbl = ['']
+freq_lbl = [0]
 
 def main():
 
@@ -130,14 +131,13 @@ def main():
 
 # animation to plot data
 def animate(i, title, x, y):
-    global scan_field_output, measured_values, sens_lbl
+    global scan_field_output, measured_values, freq_lbl
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title)
+    ax.set_title(title+'\nMeasurement at '+str(freq_lbl[0])+' GHz')
     ax.set_xlabel(x)
     ax.set_ylabel(y)
-    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -391,10 +391,10 @@ def save_method(x_values, y_values, display, directory, name, lockin_dict, signa
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
     file = open(str(directory)+"/"+str(name)+"_ST_FMR_"+str(signal_dict['Frequency (GHz)'].get())+"GHz_"+str(signal_dict['Power (dBm)'].get())+"_dBm"+str(stamp), "w")
-    file.write("Sensitivity: "+str(lockin_dict['Sensitivity'].get())+"\n")
+    file.write("Signal Frequency: "+str(signal_dict['Frequency (GHz)'].get())+"GHz Signal Power: "+str(signal_dict['Power (dBm)'].get())+"dBm\n")
     file.write("Mode: "+str(lockin_dict['Mode'].get())+" Signal Voltage: "+str(lockin_dict['Signal Voltage (V)'])+"V\n")
     file.write("Lockin Frequency: "+str(lockin_dict['Frequency (Hz)'].get())+"Hz\n")
-    file.write("Averages: "+ str(lockin_dict['Average'].get())+"\n")
+    file.write("Averages: "+ str(lockin_dict['Average'].get())+" Sensitivity: "+str(lockin_dict['Sensitivity'].get())+"\n")
     file.write("Number"+" "+"Hx Field(Oe)"+" "+"Resistance(Ohm)"+"\n")
 
     for counter, value in enumerate(y_values):
@@ -431,42 +431,52 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
 
     # target of threading, allows for smooth running
     def measure_loop():
-        global scan_field_output, measured_values, sens_lbl
+        global scan_field_output, measured_values, freq_lbl
 
         measured_values = []
-        sens_lbl = ['']
+        freq_lbl = ['']
 
         # builds list from step and max value
         scan_field_output = make_list(mag_dict['Hx Field (Oe)'].get(), mag_dict['Hx Step (Oe)'].get())
         # list is built to be negatvie to positive, but measurement needs to be pos to neg
         scan_field_output.reverse()
+        # list of frequencies to measure at
+        freq_output = make_list(signal_dict['Frequency (GHz)'].get(), signal_dict['Frequency Step (GHz)'].get())
 
 
         # ensures output voltages will not exceed amp thresholds
-        if max(scan_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']):
+        if max(scan_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']) and float(signal_dict['Frequency (GHz)'].get()) < 20:
             
             # initialize machines
             amp = lockinAmp(lockin_dict['Mode'].get(), lockin_dict['Sensitivity'].get(), float(lockin_dict['Signal Voltage (V)'].get()), int(lockin_dict['Frequency (Hz)'].get()))
+            sig_gen = HP8341() 
+            sig_gen.setPower(float(signal_dict['Power (dBm)'].get())) # set signal gen to power level
 
-            # intializes the measurement data list
-            measured_values = []
+            for freq_val in freq_output:
 
-            # measurement loops -  measure pos and neg current at give scan value and take avg abs val (ohms)
-            for counter, scan_val in enumerate(scan_field_output):
+                sig_gen.setFrequency(freq_val) # set frequency
+                freq_lbl[0] = freq_val
 
-                if counter == 0:
-                    diff = abs(scan_val)
-                else:
-                    diff = abs(scan_val - scan_field_output[counter-1])
-                amp.dacOutput((scan_val / float(control_dict['Hx/DAC (Oe/V)'])), control_dict['Hx DAC Channel'])
-                time.sleep(charging(diff))
-                tmp = 1000 * float(round(amp.readX(lockin_dict['Average'].get()), 4)) # take average from Lockin measurements
-                measured_values.append(tmp)
-                display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan_val, tmp))
-                display.see(END)
+                # intializes the measurement data list
+                measured_values = []
 
-                # save data
-                save_method(scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), lockin_dict, signal_dict)
+                # measurement loops -  measure pos and neg current at give scan value and take avg abs val (ohms)
+                for counter, scan_val in enumerate(scan_field_output):
+
+                    if counter == 0:
+                        diff = abs(scan_val)
+                    else:
+                        diff = abs(scan_val - scan_field_output[counter-1])
+                    amp.dacOutput((scan_val / float(control_dict['Hx/DAC (Oe/V)'])), control_dict['Hx DAC Channel'])
+                    time.sleep(charging(diff))
+                    tmp = 1000 * float(round(amp.readX(lockin_dict['Average'].get()), 4)) # take average from Lockin measurements
+                    measured_values.append(tmp)
+                    display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan_val, tmp))
+                    display.see(END)
+
+                    # save data
+                    save_method(scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), lockin_dict, signal_dict)
+
 
             # turn everything off at end of loop
             amp.dacOutput(0, control_dict['Hx DAC Channel'])
@@ -474,7 +484,7 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
             display.insert('end',"Measurement finished")
             display.see(END)
         else:
-            messagebox.showwarning('Output Too Large', 'Output value beyond amp voltage threshold')
+            messagebox.showwarning('Output Too Large', 'Amp Voltage or Signal Frequency Too Large!')
             display.insert('end', 'Output value too large!')
             display.see(END)
 
