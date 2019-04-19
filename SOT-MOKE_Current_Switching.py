@@ -29,8 +29,8 @@ fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 current_output = []
 measured_values = []
-fix_lbl = ['']
-pulse_lbl = ['']
+fix_lbl = [0]
+pulse_lbl = [0]
 
 x1=1086
 y1=350
@@ -161,6 +161,9 @@ def main():
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
     ani = animation.FuncAnimation(fig, animate, interval=200, fargs=[plot_title, x_lbl, y_lbl])
+    th2 = threading.Thread(target=perfSettings)
+    th2.daemon = True
+    th2.start()
 
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
@@ -173,10 +176,9 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title)
+    ax.set_title(title+"\n Measuring with Hx: %f (Oe) and %f (s) pulses" % (fix_lbl[0], pulse_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
-    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(current_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -584,8 +586,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         global current_output, measured_values, fix_lbl, pulse_lbl
 
         measured_values = []
-        fix_lbl[0] = ''
-        pulse_lbl[0] = ''
+        fix_lbl[0] = 0
+        pulse_lbl[0] = 0
 
 
         # set the scan and fixed applied field directions
@@ -685,8 +687,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
         #----------------------------END measure_loop----------------------------------#
 
-    # Only one thread allowed. This is a cheap and easy workaround so we don't have to stop threads
-    if threading.active_count() == 1:
+    # Only one measurement thread allowed. This is a cheap and easy workaround so we don't have to stop threads
+    if threading.active_count() == 2:
         # thread is set to Daemon so if mainthread is quit, it dies
         t = threading.Thread(target=measure_loop, name='measure_thread', daemon=True)
         t.start()

@@ -32,8 +32,8 @@ ax = fig.add_subplot(111)
 scan_field_output = []
 measured_values = []
 # using lists because python has built in lock for list variables (avoids multithreading issues)
-curr_lbl = [''] # label of the current value being applied
-fix_lbl = [''] # label of the fixed field value being applied
+curr_lbl = [0] # label of the current value being applied
+fix_lbl = [0, ''] # label of the fixed field value being applied
 
 
 x1=1086
@@ -165,6 +165,9 @@ def main():
     control_dict['Directory'] = set_directory(control_dict['Display'])
 
     ani = animation.FuncAnimation(fig, animate, interval=200, fargs=[plot_title, x_lbl, y_lbl])
+    th2 = threading.Thread(target=perfSettings)
+    th2.daemon = True
+    th2.start()
 
     root.protocol('WM_DELETE_WINDOW', quit) 
     root.mainloop()
@@ -177,10 +180,9 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title)
+    ax.set_title(title+"\n Measuring at %s: %f (Oe) and %f (mA)" % (fix_lbl[1], fix_lbl[0], curr_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
-    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -593,16 +595,16 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
         # resets measured values to allow animate to properly render graph when starting a new measurement loop
         measured_values = []
-        curr_lbl[0] = ''
-        fix_lbl[0] = ''
+        curr_lbl[0] = 0
+        fix_lbl[0] = 0
 
         # set the scan and fixed applied field directions
         if control_dict['H Scan Direction'].get() == 'Hz':
             scan = 'Hz'
-            fix = 'Hx'
+            fix = 'Hx'; fix_lbl[1] = 'Hx'
         else:
             scan = 'Hx'
-            fix = 'Hz'
+            fix = 'Hz'; fix_lbl[1] = 'Hz'
 
         # create the lists of field values, scan loop is modified to include full loop
         if control_dict['Field Step'].get() == 'Step':
@@ -707,8 +709,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
         #----------------------------END measure_loop----------------------------------#
 
-    # Only one thread allowed. This is a cheap and easy workaround so we don't have to stop threads
-    if threading.active_count() == 1:
+    # Only one measurement thread allowed. This is a cheap and easy workaround so we don't have to stop threads
+    if threading.active_count() == 2:
         # thread is set to Daemon so if mainthread is quit, it dies
         t = threading.Thread(target=measure_loop, name='measure_thread', daemon=True)
         t.start()

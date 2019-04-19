@@ -27,7 +27,7 @@ fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 scan_field_output = []
 measured_values = []
-sens_lbl = ['']
+sens_lbl = [0]
 
 def main():
 
@@ -132,10 +132,9 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title)
+    ax.set_title(title+"\nMeasuring with "+str(sens_lbl[0])+" (mA)")
     ax.set_xlabel(x)
     ax.set_ylabel(y)
-    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -486,7 +485,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         global scan_field_output, measured_values, sens_lbl
 
         measured_values = []
-        sens_lbl = ['']
+        sens_lbl = [0]
 
         # create the lists of field values, scan loop is modified to include full loop
         if control_dict['Field Step'].get() == 'Step':

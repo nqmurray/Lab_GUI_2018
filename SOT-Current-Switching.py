@@ -27,8 +27,8 @@ fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 current_output = []
 measured_values = []
-fix_lbl = ['']
-pulse_lbl = ['']
+fix_lbl = [0]
+pulse_lbl = [0]
 
 def main():
 
@@ -139,10 +139,9 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title)
+    ax.set_title(title+"\n Measuring with Hx: %f (Oe) and %f (s) pulses" % (fix_lbl[0], pulse_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
-    #ax.set_label(['Applied Current: %s (mA)\nFixed Field: %s (Oe)' %(curr_lbl[0], fix_lbl[0])])
     ax.plot(current_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
 
 
@@ -522,8 +521,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         global current_output, measured_values, fix_lbl, pulse_lbl
 
         measured_values = []
-        fix_lbl[0] = ''
-        pulse_lbl[0] = ''
+        fix_lbl[0] = 0
+        pulse_lbl[0] = 0
 
 
         # set the scan and fixed applied field directions

@@ -503,7 +503,7 @@ def measure_method(mag_dict, control_dict, lockin_dict):
 
         #----------------------------END measure_loop----------------------------------#
 
-    # Only one thread allowed. This is a cheap and easy workaround so we don't have to stop threads
+    # Only one measurement thread allowed. This is a cheap and easy workaround so we don't have to stop threads
     if threading.active_count() == 2:
         # thread is set to Daemon so if mainthread is quit, it dies
         t = threading.Thread(target=measure_loop, name='measure_thread', daemon=True)
