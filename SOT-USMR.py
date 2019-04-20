@@ -138,7 +138,7 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title+"\n Measuring with Hx: %f (Oe) and %f (mA) sensing current" % (fix_lbl[0], sens_lbl[0]))
+    ax.set_title(title+"\n Measuring with Hx: %.2f (Oe) and %.2f (mA) sensing current" % (fix_lbl[0], sens_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
     ax.plot(current_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)

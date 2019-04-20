@@ -132,7 +132,7 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title+"\nMeasuring with "+str(sens_lbl[0])+" (mA) sensing current")
+    ax.set_title(title+"\nMeasuring with "+str(round(sens_lbl[0],2))+" (mA) sensing current")
     ax.set_xlabel(x)
     ax.set_ylabel(y)
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
