@@ -139,7 +139,7 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title+"\n Measuring with Hx: %f (Oe) and %f (s) pulses" % (fix_lbl[0], pulse_lbl[0]))
+    ax.set_title(title+"\n Measuring with Hx: %f (Oe) and %f (s) pulse width" % (fix_lbl[0], pulse_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
     ax.plot(current_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
@@ -557,7 +557,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
             # measurement loops - for fixed field value, scan current values and measure and save
             for counter, fix_val in enumerate(fix_field_output):
-                fix_lbl[0] = str(round(fix_val, 3))
+                fix_lbl[0] = round(fix_val, 3)
 
                 if counter == 0:
                     diff = abs(fix_val)
@@ -567,7 +567,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                 time.sleep(charging(diff))
 
                 for pulse in pulse_width:
-                    pulse_lbl[0] = str(round(pulse, 3))
+                    pulse_lbl[0] = round(pulse, 3)
 
                     # setup K2400 here
                     keith_2400.fourWireOff()

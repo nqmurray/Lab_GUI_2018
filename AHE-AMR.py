@@ -142,7 +142,7 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title+"\n Measuring at %s: %f (Oe) and %f (mA)" % (fix_lbl[1], fix_lbl[0], curr_lbl[0]))
+    ax.set_title(title+"\n Fixed %s: %f (Oe) and %f (mA)" % (fix_lbl[1], fix_lbl[0], curr_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
@@ -577,11 +577,11 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                 # fixed output strength and channel
                 amp.dacOutput((fix_val / float(control_dict['%s/DAC (Oe/V)' % fix])), control_dict['%s DAC Channel' % fix])
                 # sets legend value for current fixed field output
-                fix_lbl[0] = str(round(fix_val, 3))
+                fix_lbl[0] = round(fix_val, 3)
 
                 for current_val in current_output:
                     # sets legend value for current applied current output
-                    curr_lbl[0] = str(round(current_val, 3))
+                    curr_lbl[0] = round(current_val, 3)
                     # setup K2400 here
                     keith_2400.fourWireOff()
                     keith_2400.setCurrent(round(current_val, 4))

@@ -132,7 +132,7 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title+"\nMeasuring with "+str(sens_lbl[0])+" (mA)")
+    ax.set_title(title+"\nMeasuring with "+str(sens_lbl[0])+" (mA) sensing current")
     ax.set_xlabel(x)
     ax.set_ylabel(y)
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
@@ -520,7 +520,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             # fixed sensing current value
             for sense_val in sense_output:
 
-                sens_lbl[0] = str(round(sense_val, 3))
+                sens_lbl[0] = round(sense_val, 3)
 
                 # setup K2400 here
                 keith_2400.fourWireOff()
