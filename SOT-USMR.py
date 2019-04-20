@@ -530,7 +530,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage'], lockin_dict['Frequency'])
             keith_2400=Keithley2400('f') #Initiate K2400
             keith_2000=Keithley('f') #Initiate K2000
-            sense_val = keith_dict['Sensing Current (mA)'].get()
+            sense_val = float(keith_dict['Sensing Current (mA)'].get())
             
             # measurement loops -  measure pos and neg current at give scan value and take avg abs val (ohms)
             for counter, fix_val in enumerate(fix_field_output):
