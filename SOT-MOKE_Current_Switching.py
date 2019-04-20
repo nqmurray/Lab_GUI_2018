@@ -235,7 +235,7 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
 
     # radiobutton to determine scanning field vs. set field
-    control_dict['H Scan Direction'] = StringVar(); control_dict['H Scan Direction'].set('Hz')
+    control_dict['H Scan Direction'] = StringVar(); control_dict['H Scan Direction'].set('Hx')
     Hz = Radiobutton(lf, text="Scan Hz", variable=control_dict['H Scan Direction'], value='Hz', width=12, anchor='w', \
         command = lambda: Hscan_select(control_dict['H Scan Direction'].get(), control_dict['Display']))
     Hx = Radiobutton(lf, text="Scan Hx", variable=control_dict['H Scan Direction'], value='Hx', width=12, anchor='w', \
@@ -673,7 +673,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     time.sleep(float(keith_dict['Delay (s)'].get()))
 
             # turn everything off at end of loop
-            amp.dacOutput(0, control_dict['%s DAC Channel'] % fix)
+            amp.dacOutput(0, control_dict['%s DAC Channel'% fix])
             keith_2400.minimize()
             time.sleep(0.1)
 
