@@ -515,14 +515,14 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             inverse = reversed(current_output[0:-1])
             current_output += inverse
             # sense list
-            sense_output = make_list(keith_dict['Write Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
+            pulse_output = make_list(keith_dict['Write Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
         else: 
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(current_output[0:-1])
             current_output += inverse
             # sense list
-            sense_output = convert_to_list(keith_dict['Write Pulse Width (s)'].get())
+            pulse_output = convert_to_list(keith_dict['Write Pulse Width (s)'].get())
 
         # ensures output voltages will not exceed amp thresholds
         if max(fix_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']):
