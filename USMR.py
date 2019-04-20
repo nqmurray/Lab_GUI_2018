@@ -47,7 +47,7 @@ def main():
     keith_dict = {'Sensing Current (mA)': 0.1,
                 'Sensing Current Step (mA)': 0,
                 'Averages': 1,
-                'Delay (s)': 1.0 # delay between current being applied and measurement taken
+                'Delay (s)': 0.4 # delay between current being applied and measurement taken
                 }
 
     # default values required for initializing lockin via Pyvisa
@@ -439,17 +439,17 @@ def convert_to_list(input_list):
 
 
 # takes file parameters and results and saves the file, should have 5 lines before data is saved
-def save_method(sense_val, x_values, y_values, display, directory, name, resistance):
+def save_method(sense_val, x_values, y_values, display, directory, name, resistance, pos, neg):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
     file = open(str(directory)+"/"+str(name)+"_USMR_"+"Hx_scan_"+"Oe_"+str(round(sense_val,4))+"mA_"+str(stamp), "w")
     file.write("Sensing current: "+str(round(sense_val,4))+"(mA)\n")
     file.write("Initial Resistance: "+str(resistance)+"Ohm\n")
     file.write("\n\n")
-    file.write("Number"+" "+"Hx Field(Oe)"+" "+"Avg Resistance(Ohm)"+"\n")
+    file.write("Number"+" "+"Hx Field(Oe)"+" "+"Avg Resistance(Ohm) "+"Positive Resistance "+"Negative Resistance\n")
 
     for counter, value in enumerate(y_values):
-        file.write(str(counter)+" "+str(round(x_values[counter],4))+" "+str(value)+"\n")
+        file.write(str(counter)+" "+str(round(x_values[counter],4))+" "+str(value)+" "+str(pos[counter])+" "+str(neg[counter])+"\n")
         
     file.closed
 
@@ -485,6 +485,8 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         global scan_field_output, measured_values, sens_lbl
 
         measured_values = []
+        pos_values = []
+        neg_values = []
         sens_lbl = [0]
 
         # create the lists of field values, scan loop is modified to include full loop
@@ -563,12 +565,14 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     time.sleep(float(keith_dict['Delay (s)'].get())) # delay before measuring
                     neg_data = keith_2000.measureMulti(int(keith_dict['Averages'].get()))
                     tmp = round(float((abs(pos_data) - abs(neg_data))*1000/sense_val), 4) # voltage from K2000 / sense current
+                    pos_values.append(abs(pos_data)*1000/sense_val)
+                    neg_values.append(abs(neg_data)*1000/sense_val)
                     measured_values.append(tmp)
                     display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Avg Resistance: %s (Ohm)' %(scan_val, tmp))
                     display.see(END)
 
                 # save data
-                save_method(sense_val, scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), resistance)
+                save_method(sense_val, scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), resistance, pos_values, neg_values)
 
             # turn everything off at end of loop
             amp.dacOutput(0, control_dict['Hx DAC Channel'])
