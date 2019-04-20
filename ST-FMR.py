@@ -249,7 +249,7 @@ def make_buttons(root, mag_dict, control_dict, plot_title, x_lbl, y_lbl, lockin_
     measure_button = Button(root, text='Measure', \
         command=lambda:measure_method(mag_dict, control_dict, lockin_dict, signal_dict))
     dir_button = Button(root, text='Change Directory', \
-        command=lambda:change_directory(control_dict['Directory'], control_dict['Display']))
+        command=lambda:change_directory(control_dict, control_dict['Display']))
     quit_button = Button(root, text='Quit', \
         command=lambda:quit_method(control_dict['Display'], lockin_dict, signal_dict))
     clear_button = Button(root, text='Clear', \
@@ -296,10 +296,10 @@ def set_directory(display):
 
 
 # changes the save directory
-def change_directory(var, display):
+def change_directory(control_dict, display):
 
-    var = filedialog.askdirectory()
-    display.insert('end', var)
+    control_dict['Directory'] = filedialog.askdirectory()
+    display.insert('end', control_dict['Directory'])
     display.see(END)
 
 
@@ -474,8 +474,8 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
                     display.insert('end', 'Applied Hx Field Value: %s (Oe)      Measured Resistance: %s (Ohm)' %(scan_val, tmp))
                     display.see(END)
 
-                    # save data
-                    save_method(scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), lockin_dict, signal_dict)
+                # save data
+                save_method(scan_field_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), lockin_dict, signal_dict)
 
 
             # turn everything off at end of loop

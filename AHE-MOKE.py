@@ -299,7 +299,7 @@ def make_buttons(root, mag_dict, keith_dict, control_dict, plot_title, x_lbl, y_
     measure_button = Button(root, text='Measure', \
         command=lambda:measure_method(mag_dict, keith_dict, control_dict, lockin_dict))
     dir_button = Button(root, text='Change Directory', \
-        command=lambda:change_directory(control_dict['Directory'], control_dict['Display']))
+        command=lambda:change_directory(control_dict, control_dict['Display']))
     quit_button = Button(root, text='Quit', \
         command=lambda:quit_method(lockin_dict, control_dict['Display']))
     clear_button = Button(root, text='Clear', \
@@ -401,10 +401,10 @@ def set_directory(display):
 
 
 # changes the save directory
-def change_directory(var, display):
+def change_directory(control_dict, display):
 
-    var = filedialog.askdirectory()
-    display.insert('end', var)
+    control_dict['Directory'] = filedialog.askdirectory()
+    display.insert('end', control_dict['Directory'])
     display.see(END)
     
 
