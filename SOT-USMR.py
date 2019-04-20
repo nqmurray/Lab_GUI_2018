@@ -21,14 +21,14 @@ from keithley import Keithley
 root = Tk()
 root.title('SOT Switching USMR Measurement')
 
-global current_output, measured_values, dataplot, fix_lbl, sens_lbl
+global current_output, measured_values, dataplot, fix_lbl, pulse_lbl
 
 fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 current_output = []
 measured_values = []
 fix_lbl = [0]
-sens_lbl = [0]
+pulse_lbl = [0]
 
 def main():
 
@@ -494,11 +494,11 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
 
     # target of threading, allows for smooth running
     def measure_loop():
-        global current_output, measured_values, fix_lbl, sens_lbl
+        global current_output, measured_values, fix_lbl, pulse_lbl
 
         measured_values = []
         fix_lbl[0] = 0
-        sens_lbl[0] = 0
+        pulse_lbl[0] = 0
 
         # create the lists of field values, scan loop is modified to include full loop
         if control_dict['Field Step'].get() == 'Step':
