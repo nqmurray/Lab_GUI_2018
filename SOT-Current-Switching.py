@@ -71,7 +71,7 @@ def main():
                     'Hz DAC Channel': 2, # displayed in make_extras()
                     'Hx DAC Channel': 3, # displayed in make_extras()
                     'Hz/DAC (Oe/V)': 1022, # displayed in make_extras()
-                    'Hx/DAC (Oe/V)': 396.59, # displayed in make_extras()
+                    'Hx/DAC (Oe/V)': 869.61, # displayed in make_extras()
                     'Hz DAC Limit': 1, # Voltage limit of Z direction mag
                     'Hx DAC Limit': 12, # Voltage limit of X direction mag
                     'Display': '', # set with make_info()
