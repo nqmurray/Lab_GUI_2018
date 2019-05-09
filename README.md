@@ -12,5 +12,4 @@ New GUI built for better functionality
 - dictionaries used to define default parameters for easy updates going forward
 - better labeling and saved data
 
-The measurement code has all been tried and no errors have been detected yet.  
 
