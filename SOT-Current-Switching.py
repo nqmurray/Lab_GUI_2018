@@ -66,7 +66,6 @@ def main():
     # values set by various functions, define measurement settings
     control_dict = {'Field Step': 'Step', # set with make_extras()
                     'I_app Step': 'Step', # set with make_extras()
-                    'H Scan Direction': 'Hx', # set with make_extras()
                     'H Output Direction': 'Hz', # set with make_buttons()
                     'Hz DAC Channel': 2, # displayed in make_extras()
                     'Hx DAC Channel': 3, # displayed in make_extras()
@@ -197,8 +196,6 @@ def make_extras(root, mag_dict, keith_dict, control_dict):
 
     lf = LabelFrame(root, text='Measurement Options')
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
-
-
 
     # radiobutton to determine loop via step or user defined values
     control_dict['Field Step'] = StringVar(); control_dict['Field Step'].set('Step')
@@ -536,7 +533,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             current_output += inverse
             # if user defined, just converts the input from initial pulse width field into list
             # note that final pulse width is disabled if user defined input is selected
-            pulse_width = convert_to_list(keith_dict['Initial Pulse Width (s)']) 
+            pulse_width = convert_to_list(keith_dict['Initial Pulse Width (s)'].get()) 
 
         # ensures output voltages will not exceed amp thresholds
         if max(fix_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']) and\
@@ -576,7 +573,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     keith_2400.fourWireOff()
                     keith_2400.setCurrent(I_sense)
                     keith_2400.outputOn()
-                    # take initial resistance measurement?
+                    # take initial resistance measurement
                     index=1
                     data=[]
 

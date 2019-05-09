@@ -39,7 +39,7 @@ def main():
 
     # dictionaries of GUI contents
     # default initial values
-    mag_dict = {'Hz Field (Oe)': 0,
+    mag_dict = {'Hz Field (Oe)': 100,
                 'Hx Field (Oe)': 0,
                 'Hx Step (Oe)': 0,
                 'Output Time (s)': 1
@@ -47,13 +47,14 @@ def main():
 
     keith_dict = {'Current (mA)': 1.9,
                 'Current Step (mA)': 0,
-                'Sensing Current (mA)': 0.1,
-                'Write Pulse Width (s)': 0.05,
+                'Sensing Current (mA)': 1,
+                'Initial Pulse Width (s)': 0.05,
+                'Final Pulse Width (s)': 0.05, 
                 'Write Pulse Step (s)': 0, 
-                'Read Pulse Width (s)': 0.05,
-                'Read Write Delay (s)': 0.05,
+                'Read Pulse Width (s)': 0.05, # how long the read current is applied before measurement is taken
+                'Read Write Delay (s)': 0.05, # delay between write pulse turning off and read current turning on
                 'Averages': 1,
-                'Delay (s)': 0.4 # delay between pos and neg sensing current measurements
+                'Delay (s)': 0.05 # delay between sensing pulse and the next writing pulse
                 }
 
     # default values required for initializing lockin via Pyvisa
@@ -296,16 +297,18 @@ def I_app_input(var, keith_dict, display):
         keith_dict['Current (mA)'].delete(0, len(keith_dict['Current (mA)'].get())) # clear entry
         keith_dict['Current (mA)'].insert(0, '-1, 0, -1'); keith_dict['Current (mA)'].update() # list entry
         keith_dict['Current Step (mA)'].config(state=DISABLED); keith_dict['Current Step (mA)'].update() # disable step function
-        keith_dict['Write Pulse Width (s)'].delete(0, len(keith_dict['Write Pulse Width (s)'].get())) # clear entry
-        keith_dict['Write Pulse Width (s)'].insert(0, '-1, 0, -1'); keith_dict['Write Pulse Width (s)'].update() # list entry
+        keith_dict['Initial Pulse Width (s)'].delete(0, len(keith_dict['Initial Pulse Width (s)'].get())) # clear entry
+        keith_dict['Initial Pulse Width (s)'].insert(0, '-1, 0, -1'); keith_dict['Initial Pulse Width (s)'].update() # list entry
+        keith_dict['Final Pulse Width (s)'].config(state=DISABLED); keith_dict['Final Pulse Width (s)'].update() # disable step function
         keith_dict['Write Pulse Step (s)'].config(state=DISABLED); keith_dict['Write Pulse Step (s)'].update() # disable step function
     else:
         keith_dict['Current (mA)'].delete(0, len(keith_dict['Current (mA)'].get())) # clear entry
         keith_dict['Current (mA)'].insert(0, '0'); keith_dict['Current (mA)'].update() # step entry
         keith_dict['Current Step (mA)'].config(state=NORMAL); keith_dict['Current Step (mA)'].update() # enable step function
-        keith_dict['Write Pulse Width (s)'].delete(0, len(keith_dict['Write Pulse Width (s)'].get())) # clear entry
-        keith_dict['Write Pulse Width (s)'].insert(0, '0'); keith_dict['Write Pulse Width (s)'].update() # step entry
-        keith_dict['Write Pulse Step (s)'].config(state=NORMAL); keith_dict['Write Pulse Step (s)'].update() # enable step function   
+        keith_dict['Initial Pulse Width (s)'].delete(0, len(keith_dict['Initial Pulse Width (s)'].get())) # clear entry
+        keith_dict['Initial Pulse Width (s)'].insert(0, '0'); keith_dict['Initial Pulse Width (s)'].update() # step entry
+        keith_dict['Final Pulse Step (s)'].config(state=NORMAL); keith_dict['Final Pulse Step (s)'].update() # enable step function
+        keith_dict['Write Pulse Step (s)'].config(state=NORMAL); keith_dict['Write Pulse Step (s)'].update() # enable step function    
 
     display.insert('end', '%s loop type selected for applied currents.' % var)
     display.see(END)
@@ -453,7 +456,7 @@ def convert_to_list(input_list):
 def save_method(fix_val, pulse_val, x_values, y_values, display, directory, name, resistance, pos, neg, sense_val):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+name+"_USMR_SOT_"+"Hx_scan_"+str(round(fix_val,4))+"_Oe_"+str(round(pulse_val,4))+"s_"+str(stamp), "w")
+    file = open(str(directory)+"/"+name+"_USMR_SOT_"+"Hx_scan_"+str(round(fix_val,2))+"_Oe_"+str(round(pulse_val,4))+"_s_"+str(stamp), "w")
     file.write("Sensing current: "+str(round(sense_val,4))+"(mA)\n")
     file.write("Applied In-plane Field: "+str(round(fix_val,4))+"(Oe)\n")
     file.write("Initial Resistance: "+str(resistance)+"(Ohm)\n")
@@ -499,6 +502,15 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
         measured_values = []
         fix_lbl[0] = 0
         pulse_lbl[0] = 0
+        # create local variables for the measurment loop thread to avoid changes caused by updated dictionary values
+        sense_val = float(keith_dict['Sensing Current (mA)'].get())
+        d = float(keith_dict['Delay (s)'].get())
+        avg = int(keith_dict['Averages'].get())
+        read = float(keith_dict['Read Pulse Width (s)'].get())
+        z_reset = float(mag_dict['Hz Field (Oe)'].get())
+        reset_time = float(mag_dict['Output Time (s)'].get())
+        rw_d = float(keith_dict['Read Write Delay (s)'].get())
+        n = str(control_dict['File Name'].get()) 
 
         # create the lists of field values, scan loop is modified to include full loop
         if control_dict['Field Step'].get() == 'Step':
@@ -514,43 +526,60 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(current_output[0:-1])
             current_output += inverse
-            # sense list
-            pulse_output = make_list(keith_dict['Write Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
+            # pulse width list
+            # builds full list, removes all values less than the initial width
+            # note, if the step doesn't fit perfectly then the initial value will be greater than input by the user
+            pulse_output = make_list(keith_dict['Final Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
+            pulse_width = [elem for elem in pulse_width if elem >= float(keith_dict['Initial Pulse Width (s)'].get())]
         else: 
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
             # take inverse list and add it on, creating the full list values to measure at
             inverse = reversed(current_output[0:-1])
             current_output += inverse
-            # sense list
-            pulse_output = convert_to_list(keith_dict['Write Pulse Width (s)'].get())
+            # if user defined, just converts the input from initial pulse width field into list
+            # note that final pulse width is disabled if user defined input is selected
+            pulse_output = convert_to_list(keith_dict['Initial Pulse Width (s)'].get())
 
         # ensures output voltages will not exceed amp thresholds
-        if max(fix_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']):
+        if max(fix_field_output) / float(control_dict['Hx/DAC (Oe/V)']) < float(control_dict['Hx DAC Limit']) and\
+         z_reset / float(control_dict['Hz/DAC (Oe/V)']) < float(control_dict['Hz DAC Limit']):
+
             # initialize machines
             amp = lockinAmp(lockin_dict['Mode'], lockin_dict['Sensitivity'], lockin_dict['Signal Voltage'], lockin_dict['Frequency'])
             keith_2400=Keithley2400('f') #Initiate K2400
             keith_2000=Keithley('f') #Initiate K2000
-            sense_val = float(keith_dict['Sensing Current (mA)'].get())
             
             # measurement loops -  measure pos and neg current at give scan value and take avg abs val (ohms)
             for counter, fix_val in enumerate(fix_field_output):
-                fix_lbl[0] = round(fix_val, 3)
-
-                if counter == 0:
-                    diff = abs(fix_val)
-                else:
-                    diff = abs(fix_val - fix_field_output[counter-1])
-                amp.dacOutput((fix_val / float(control_dict['Hx/DAC (Oe/V)'])), control_dict['Hx DAC Channel'])
-                time.sleep(charging(diff))
+                # set fixed value label for graph
+                fix_lbl[0] = round(fix_val, 4)
 
                 for pulse_val in pulse_output:
-                    pulse_lbl[0] = round(pulse_val, 3)
+                    # set pulse width label for graph
+                    pulse_lbl[0] = round(pulse_val, 4)
+
+                    # intializes the measurement data list
+                    measured_values = []
+                    pos_values = []
+                    neg_values = []
+
+                    # turn off Hx field for reset
+                    amp.dacOutput(0, control_dict['Hx DAC Channel'])
+
+                    # reset device to single orientation
+                    amp.dacOutput((z_reset / float(control_dict['Hz/DAC (Oe/V)'])), control_dict['Hz DAC Channel'])
+                    time.sleep(reset_time)
+                    amp.dacOutput(0, control_dict['Hz DAC Channel'])
+
+                    # turn Hx fixed field on
+                    amp.dacOutput((fix_val / float(control_dict['Hx/DAC (Oe/V)'])), control_dict['Hx DAC Channel'])
+                    time.sleep(charging(fix_val))
 
                     # setup K2400 here
                     keith_2400.fourWireOff()
                     keith_2400.setCurrent(sense_val)
                     keith_2400.outputOn()
-                    # take initial resistance measurement?
+                    # take initial resistance measurement
                     index=1
                     data=[]
 
@@ -563,44 +592,40 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                     display.insert('end',"Measured resistance: %f Ohm" %(resistance))
                     display.see(END)
 
-                    # intializes the measurement data list
-                    measured_values = []
-                    pos_values = []
-                    neg_values = []
-
+                    # display the pulse width loop that is starting
                     display.insert('end', 'Measurement using %s (s) write pulse width' % str(pulse_val))
                     display.see(END)
 
                     for current_val in current_output: 
                         # write pulse
                         keith_2400.setCurrent(round(current_val,4))
-                        time.sleep(float(keith_dict['Write Pulse Width (s)'].get()))
+                        time.sleep(pulse_val) # pulse duration
                         keith_2400.setCurrent(0)
-                        time.sleep(float(keith_dict['Read Write Delay (s)'].get()))
+                        time.sleep(rw_d)
                         # measurement at positive sensing current
                         keith_2400.setCurrent(round(sense_val,4))
-                        time.sleep(float(keith_dict['Read Pulse Width (s)'].get()))
-                        pos_data=keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                        time.sleep(float(keith_dict['Delay (s)'].get()))
+                        time.sleep(read)
+                        pos_data=keith_2000.measureMulti(avg)
                         # measurement at negative sensing current
                         keith_2400.setCurrent(round(-sense_val,4))
-                        time.sleep(float(keith_dict['Read Pulse Width (s)'].get()))
-                        neg_data=keith_2000.measureMulti(int(keith_dict['Averages'].get()))
-                        tmp = round(float((abs(pos_data) - abs(neg_data))*1000/sense_val), 4) # voltage from K2000 / sense current
+                        time.sleep(read)
+                        neg_data=keith_2000.measureMulti(avg)
+                        # turn off and save data
+                        keithley2400.setCurrent(0)
+                        tmp = float((abs(pos_data) - abs(neg_data))*1000/sense_val) # voltage from K2000 / sense current
                         pos_values.append(abs(pos_data)*1000/sense_val)
                         neg_values.append(abs(neg_data)*1000/sense_val)
                         measured_values.append(tmp)
-                        display.insert('end', 'Applied Pulse Strength: %s (mA)      Measured Resistance: %s (Ohm)' %(current_val, tmp))
+                        time.sleep(d) # sleep for delay time
+                        display.insert('end', 'Applied Pulse Strength: %s (mA)      Measured Resistance: %s (Ohm)' %(current_val, round(tmp,4)))
                         display.see(END)
 
                     # save data
-                    save_method(fix_val, pulse_val, current_output, measured_values, display, control_dict['Directory'], control_dict['File Name'].get(), resistance, pos_values, neg_values, sense_val)
+                    save_method(fix_val, pulse_val, current_output, measured_values, display, control_dict['Directory'], n, resistance, pos_values, neg_values, sense_val)
 
             # turn everything off at end of loop
             amp.dacOutput(0, control_dict['Hx DAC Channel'])
-            keith_2400.minimize()
-            time.sleep(0.1)
-
+            keith_2400.minimize() # set keithley back to settings that will prevent the device from being destroyed if probes are moved
 
             display.insert('end',"Measurement finished")
             display.see(END)

@@ -138,7 +138,7 @@ def animate(i, title, x, y):
 
     ax.clear()
     ax.grid(True)
-    ax.set_title(title+'\nMeasurement at '+str(freq_lbl[0])+' GHz and '+str(power_lbl[0])+' dBm')
+    ax.set_title(title+'\nMeasurement with Power: %.2f (dBm) and Freq: %.2f (GHz)' %(power_lbl[0], freq_lbl[0]))
     ax.set_xlabel(x)
     ax.set_ylabel(y)
     ax.plot(scan_field_output[0:len(measured_values)], measured_values,'b-o', ms=10, mew=0.5)
