@@ -28,8 +28,8 @@ fig = plt.Figure(figsize=(6,5), dpi=100)
 ax = fig.add_subplot(111)
 scan_field_output = []
 measured_values = []
-freq_lbl = ['']
-power_lbl = ['']
+freq_lbl = [0]
+power_lbl = [0]
 
 def main():
 
@@ -228,7 +228,7 @@ def make_extras(root, mag_dict, control_dict):
     lf.grid(ipadx=2, ipady=2, sticky='nsew')
 
     # lockin DAC labels
-    Hx_lbl = Label(lf, width=40, text=('Hx DAC Channel: %s' % control_dict['Hx DAC Channel']), anchor='w')
+    Hx_lbl = Label(lf, width=20, text=('Hx DAC Channel: %s' % control_dict['Hx DAC Channel']), anchor='w')
     Hx_conv_lbl = Label(lf, width=20, text='Hx/DAC (Oe/V)', anchor='w')
     Hx_conv_ent = Entry(lf, width=20); Hx_conv_ent.insert(0, control_dict['Hx/DAC (Oe/V)'])
     control_dict['Hx/DAC (Oe/V)'] = Hx_conv_ent
@@ -394,7 +394,7 @@ def make_list(max_val, step_val):
 def save_method(x_values, y_values, display, directory, f_name, mode, sen, sig_v, fr, av, sg_pwr, sg_freq):
 
     stamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    file = open(str(directory)+"/"+str(f_name)+"_ST_FMR_"+str(freq_v)+"_GHz_"+str(sg_pwr)+"_dBm_"+str(stamp)+"tr", "w")
+    file = open(str(directory)+"/"+str(f_name)+"_ST_FMR_"+str(sg_freq)+"_GHz_"+str(sg_pwr)+"_dBm_"+str(stamp)+"tr", "w")
     file.write("Signal Frequency: "+str(sg_freq)+" GHz Signal Power: "+str(sg_pwr)+" dBm\n")
     file.write("Mode: "+str(mode)+" Signal Voltage: "+str(sig_v)+" V\n")
     file.write("Lockin Frequency: "+str(fr)+" Hz\n")
@@ -438,8 +438,8 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
         global scan_field_output, measured_values, freq_lbl, power_lbl
 
         measured_values = []
-        freq_lbl = ['']
-        power_lbl = ['']
+        freq_lbl = [0]
+        power_lbl = [0]
 
         # set local variables that won't change if the dictionary values are changed while the loop is running
         hx_dac = float(control_dict['Hx/DAC (Oe/V)'].get())
@@ -458,8 +458,8 @@ def measure_method(mag_dict, control_dict, lockin_dict, signal_dict):
         freq_output = make_list(signal_dict['Frequency (GHz)'].get(), signal_dict['Frequency Step (GHz)'].get())
         power_output = make_list(signal_dict['Power (dBm)'].get(), signal_dict['Power Step (dBm)'].get())
         # remove all frequency values less than 3 GHz
-        freq_output = [elem for elem in freq_output if elem >= float(signal_dict['Minimum Frequency (GHz)'].get())
-        power_output = [elem for elem in power_output if elem >= float(signal_dict['Minimum Power (dBm)'].get())
+        freq_output = [elem for elem in freq_output if elem >= float(signal_dict['Minimum Frequency (GHz)'].get())]
+        power_output = [elem for elem in power_output if elem >= float(signal_dict['Minimum Power (dBm)'].get())]
         # switch the list to be from max to min
         freq_output.reverse() 
 
