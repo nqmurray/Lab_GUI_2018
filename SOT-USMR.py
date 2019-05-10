@@ -530,7 +530,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
             # builds full list, removes all values less than the initial width
             # note, if the step doesn't fit perfectly then the initial value will be greater than input by the user
             pulse_output = make_list(keith_dict['Final Pulse Width (s)'].get(), keith_dict['Write Pulse Step (s)'].get())
-            pulse_width = [elem for elem in pulse_width if elem >= float(keith_dict['Initial Pulse Width (s)'].get())]
+            pulse_output = [elem for elem in pulse_output if elem >= float(keith_dict['Initial Pulse Width (s)'].get())]
         else: 
             current_output = convert_to_list(keith_dict['Current (mA)'].get())
             # take inverse list and add it on, creating the full list values to measure at
@@ -611,7 +611,7 @@ def measure_method(mag_dict, keith_dict, control_dict, lockin_dict):
                         time.sleep(read)
                         neg_data=keith_2000.measureMulti(avg)
                         # turn off and save data
-                        keithley2400.setCurrent(0)
+                        keith_2400.setCurrent(0)
                         tmp = float((abs(pos_data) - abs(neg_data))*1000/sense_val) # voltage from K2000 / sense current
                         pos_values.append(abs(pos_data)*1000/sense_val)
                         neg_values.append(abs(neg_data)*1000/sense_val)
