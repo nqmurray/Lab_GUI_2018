@@ -8,6 +8,7 @@ class HP8341():
         self.hp = self.rm.open_resource('GPIB::19') #HP8341B GPIB address 19
 
         self.hp.write("IP CW6Gz PL-10dB") #Set RF output to 6GHz and -10dBm
+        self.hp.write("AM1")
 
     def __str__(self):
         return "initialized"
@@ -19,6 +20,15 @@ class HP8341():
     def setPower(self, power):
         self.hp.write("PL %f dB" %power) #Set RF power level, in dBm
         print("RF power:%f dBm" %power)
+
+    def setModulation(self, x):
+        if x:
+            self.hp.write("AM1") # turn on AM modulation
+            print("AM Modulation turned on")
+        else:
+            self.hp.write("AM0") # turn off AM modulation
+            print("AM Modulation turned off")
+
         
 
 if __name__ == '__main__':
@@ -26,6 +36,9 @@ if __name__ == '__main__':
     new = HP8341()
 
     new.setPower(10) #Set power to 10dBm
+
+    new.setModulation(False)
+    new.setModulation(True)
     
     i=5
     while i<=12:

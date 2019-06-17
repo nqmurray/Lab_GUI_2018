@@ -25,6 +25,8 @@ class lockinAmp():
         #Set output AC voltage amplitude
         self.amplitude = signal     #output voltage amplitude (V)
         self.frequency = freq  #output frequency (Hz)
+        print("Frequency: ", freq, " TYPE: ", type(freq))
+        print("Signal: ", signal, " TYPE:" , type(signal))
 
         #Initialize display
         self.sr.write("DISPOUT0 9")
@@ -33,8 +35,8 @@ class lockinAmp():
         self.sr.write("DISPOUT3 10")
 
         #Set signal channel to
-        #self.sr.write("VMODE 1") #A
-        self.sr.write("VMODE 3") #A-B
+        self.sr.write("VMODE 1") #A
+        #self.sr.write("VMODE 3") #A-B
 
         #Setting up AC Gain and Time Constant
         #self.sr.write("AUTOMATIC 1")
@@ -172,11 +174,12 @@ class lockinAmp():
 
         i=1
         data=0
-        N=average #Number of averages
+        N=int(average) #Number of averages
 
         while i<=N:
 
             tmp=self.sr.query("X.")
+
 
             if tmp=='0.0E+00\x00\r\n':
                 tmp=0
@@ -185,5 +188,5 @@ class lockinAmp():
 
             data=data+tmp
             i+=1
-            
-        return float(data/average)
+          
+        return float(data/int(average))
